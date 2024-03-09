@@ -1,0 +1,80 @@
+program = {statement | functionDefinition};
+
+statement = ifStatement |
+            whileStatement |
+            variableDeclaration |
+            assignment |
+            functionCall |
+            returnStatement;
+
+functionDefinition = "def" identifier parameterList statementBlock;
+
+parameterList = "(" [identifier, {"," identifier}] ")";
+
+statementBlock = "{" {statement} "}";
+
+ifStatement = "if" "(" expression ")" statementBlock ["else" statementBlock];
+
+whileStatement = "while" "(" expression ")" statementBlock;
+
+variableDeclaration = "var" identifier ["=" expression];
+
+assignment = identifier "=" expression |
+             identifier "[" dictionaryKey "]" "=" expression;
+
+dictionaryKey = identifier | literal;
+
+functionCall = identifier "(" [expression, {"," expression}] ")";
+
+returnStatement = "return" expression;
+
+expression = equalExpression {equalOperator equalExpression};
+
+equalExpression = andExpression {orOperator andExpression};
+
+andExpression = orExpression {andOperator orExpression};
+
+orExpression = multiplicativeExpression {additiveOperator multiplicativeExpression};
+
+multiplicativeExpression = singleExpression {multiplicativeOperator singleExpression};
+
+singleExpression = identifier |
+                   literal |
+                   "(" expression ")" |
+                   identifier "[" dictionaryKey "]" |
+                   nonNullableExpression;
+
+nonNullableExpression = singleExpression "?";
+
+equalOperator = "==" |
+                "!=";
+
+orOperator = "||";
+
+andOperator = "&&";
+
+additiveOperator = "+" |
+                   "-";
+
+multiplicativeOperator = "*" |
+                         "/"
+                         "%";
+
+identifier = letter {letter | digit};
+
+literal = stringLiteral |
+          numberLiteral |
+          dictionaryLiteral |
+          nullLiteral;
+
+letter = "a".."z" | "A".."Z";
+
+digit = "0".."9";
+
+stringLiteral = "\"" .. "\"";
+
+numberLiteral = digit {digit};
+
+dictionaryLiteral = "{" [singleExpression ":" singleExpression {"," singleExpression ":" singleExpression }] "}";
+
+nullLiteral = "null";
