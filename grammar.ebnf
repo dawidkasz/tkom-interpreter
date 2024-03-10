@@ -30,7 +30,9 @@ returnStatement = "return" expression;
 
 expression = equalExpression {equalOperator equalExpression};
 
-equalExpression = andExpression {orOperator andExpression};
+equalExpression = relationExpression {relationOperator relationExpression};
+
+relationExpression = andExpression {orOperator andExpression};
 
 andExpression = orExpression {andOperator orExpression};
 
@@ -48,6 +50,11 @@ nonNullableExpression = singleExpression "?";
 
 equalOperator = "==" |
                 "!=";
+
+relationOperator = "<" |
+                   ">" |
+                   "<=" |
+                   ">=";
 
 orOperator = "||";
 
