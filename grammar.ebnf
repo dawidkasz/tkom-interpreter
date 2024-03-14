@@ -80,7 +80,7 @@ digit = "0".."9";
 
 stringLiteral = "\"" .. "\"";
 
-numberLiteral = digit {digit};
+numberLiteral = digit {digit} ["." digit {digit}];
 
 dictionaryLiteral = "{" [singleExpression ":" singleExpression {"," singleExpression ":" singleExpression }] "}";
 
