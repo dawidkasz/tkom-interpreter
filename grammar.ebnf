@@ -1,11 +1,13 @@
-program = {statement | functionDefinition};
+program = {variableDeclaration | functionDefinition};
 
 statement = ifStatement |
             whileStatement |
             variableDeclaration |
             assignment |
             functionCall |
-            returnStatement;
+            returnStatement |
+            tryCatchStatement
+            throwStatement;
 
 functionDefinition = "def" identifier parameterList statementBlock;
 
@@ -17,33 +19,40 @@ ifStatement = "if" "(" expression ")" statementBlock ["else" statementBlock];
 
 whileStatement = "while" "(" expression ")" statementBlock;
 
-variableDeclaration = "var" identifier ["=" expression];
+variableDeclaration = "var" identifier ["=" expression] ";";
 
 assignment = identifier "=" expression |
-             identifier "[" dictionaryKey "]" "=" expression;
+             identifier "[" dictionaryKey "]" "=" expression ";";
 
 dictionaryKey = identifier | literal;
 
-functionCall = identifier "(" [expression, {"," expression}] ")";
+functionCall = identifier "(" [expression, {"," expression}] ")" ";";
 
-returnStatement = "return" expression;
+returnStatement = "return" expression ";";
 
-expression = equalExpression {equalOperator equalExpression};
+tryCatchStatement = "try" statementBlock "catch" ["(" identifier ")"] statementBlock;
 
-equalExpression = relationExpression {relationOperator relationExpression};
+throwStatement = "throw" expression ";";
 
-relationExpression = andExpression {orOperator andExpression};
+expression = multiplicativeExpression {additiveOperator multiplicativeExpression};
 
-andExpression = orExpression {andOperator orExpression};
+multiplicativeExpression = orExpression {multiplicativeOperator orExpression};
 
-orExpression = multiplicativeExpression {additiveOperator multiplicativeExpression};
+orExpression = andExpression {orOperator andExpression};
 
-multiplicativeExpression = singleExpression {multiplicativeOperator singleExpression};
+andExpression = relationExpression {andOperator relationExpression};
+
+relationExpression = equalExpression {relationOperator equalExpression};
+
+equalExpression = possibleNegatedSingleExpression {equalExpression possibleNegatedSingleExpression};
+
+possibleNegatedSingleExpression = singleExpression | ("!" singleExpression);
 
 singleExpression = identifier |
                    literal |
                    "(" expression ")" |
                    identifier "[" dictionaryKey "]" |
+                   functionCall |
                    nonNullableExpression;
 
 nonNullableExpression = singleExpression "?";
@@ -67,7 +76,7 @@ multiplicativeOperator = "*" |
                          "/"
                          "%";
 
-identifier = letter {letter | digit};
+identifier = letter {letter | digit | "_"};
 
 literal = stringLiteral |
           numberLiteral |
@@ -76,11 +85,14 @@ literal = stringLiteral |
 
 letter = "a".."z" | "A".."Z";
 
-digit = "0".."9";
+
+nonZeroDigit = "1" .. "9";
+
+digit = "0" | nonZeroDigit;
 
 stringLiteral = "\"" .. "\"";
 
-numberLiteral = digit {digit} ["." digit {digit}];
+numberLiteral = nonZeroDigit {digit} ["." digit {digit}];
 
 dictionaryLiteral = "{" [singleExpression ":" singleExpression {"," singleExpression ":" singleExpression }] "}";
 
