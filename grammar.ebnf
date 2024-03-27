@@ -57,7 +57,7 @@ functionReturnType = type | "void";
 
 type = simpleType | parametrizedType;
 
-parametrizedType = collectionType "<" simpleType "," simpleType ">";
+parametrizedType = collectionType "[" simpleType "," simpleType "]";
 
 collectionType = "dict";
 
