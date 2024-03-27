@@ -59,11 +59,15 @@ type = simpleType | parametrizedType;
 
 parametrizedType = collectionType "[" simpleType "," simpleType "]";
 
-collectionType = "dict";
-
 simpleType = "int" |
              "float" |
              "string";
+
+collectionType = "dict";
+
+orOperator = "||";
+
+andOperator = "&&";
 
 relationOperator = "<" |
                    ">" |
@@ -71,10 +75,6 @@ relationOperator = "<" |
                    ">=" |
                    "==" |
                    "!=";
-
-orOperator = "||";
-
-andOperator = "&&";
 
 additiveOperator = "+" |
                    "-";
