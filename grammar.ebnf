@@ -5,13 +5,11 @@ statement = ifStatement |
             variableDeclaration |
             assignment |
             functionCall |
-            returnStatement |
-            tryCatchStatement
-            throwStatement;
+            returnStatement;
 
-functionDefinition = "def" identifier parameterList statementBlock;
+functionDefinition = functionReturnType identifier parameterList statementBlock;
 
-parameterList = "(" [identifier, {"," identifier}] ")";
+parameterList = "(" [type identifier, {"," type identifier}] ")";
 
 statementBlock = "{" {statement} "}";
 
@@ -19,51 +17,57 @@ ifStatement = "if" "(" expression ")" statementBlock ["else" statementBlock];
 
 whileStatement = "while" "(" expression ")" statementBlock;
 
-variableDeclaration = "var" identifier ["=" expression] ";";
+variableDeclaration = type identifier ["=" expression];
 
 assignment = identifier "=" expression |
-             identifier "[" dictionaryKey "]" "=" expression ";";
+             identifier "[" expression "]" "=" expression;
 
-dictionaryKey = identifier | literal;
+functionCall = identifier argumentList;
 
-functionCall = identifier "(" [expression, {"," expression}] ")" ";";
+argumentList = "(" [expression, {"," expression}] ")";
 
-returnStatement = "return" expression ";";
+returnStatement = "return" expression;
 
-tryCatchStatement = "try" statementBlock "catch" ["(" identifier ")"] statementBlock;
-
-throwStatement = "throw" expression ";";
-
-expression = multiplicativeExpression {additiveOperator multiplicativeExpression};
-
-multiplicativeExpression = orExpression {multiplicativeOperator orExpression};
-
-orExpression = andExpression {orOperator andExpression};
+expression = andExpression {orOperator andExpression};
 
 andExpression = relationExpression {andOperator relationExpression};
 
-relationExpression = equalExpression {relationOperator equalExpression};
+relationExpression = additiveExpression {relationOperator additiveExpression};
 
-equalExpression = possibleNegatedSingleExpression {equalExpression possibleNegatedSingleExpression};
+additiveExpression = multiplicativeExpression {additiveOperator multiplicativeExpression};
 
-possibleNegatedSingleExpression = singleExpression | ("!" singleExpression);
+multiplicativeExpression = nonNullableExpression {multiplicativeOperator nonNullableExpression};
+
+nonNullableExpression = negatedSingleExpression ["?"];
+
+negatedSingleExpression = ["!" | "-"] castedExpression;
+
+castedExpression = singleExpression ["as" simpleType];
 
 singleExpression = identifier |
                    literal |
                    "(" expression ")" |
-                   identifier "[" dictionaryKey "]" |
                    functionCall |
-                   nonNullableExpression;
+                   identifier "[" expression "]";
 
-nonNullableExpression = singleExpression "?";
+functionReturnType = type | "void";
 
-equalOperator = "==" |
-                "!=";
+type = simpleType | parametrizedType;
+
+parametrizedType = collectionType "<" simpleType "," simpleType ">";
+
+collectionType = "dict";
+
+simpleType = "int" |
+             "float" |
+             "string";
 
 relationOperator = "<" |
                    ">" |
                    "<=" |
-                   ">=";
+                   ">=" |
+                   "==" |
+                   "!=";
 
 orOperator = "||";
 
@@ -76,7 +80,7 @@ multiplicativeOperator = "*" |
                          "/"
                          "%";
 
-identifier = letter {letter | digit | "_"};
+identifier = (letter | "_") {letter | digit | "_"};
 
 literal = stringLiteral |
           numberLiteral |
@@ -85,15 +89,14 @@ literal = stringLiteral |
 
 letter = "a".."z" | "A".."Z";
 
+digit = "0" | nonZeroDigit;
 
 nonZeroDigit = "1" .. "9";
-
-digit = "0" | nonZeroDigit;
 
 stringLiteral = "\"" .. "\"";
 
 numberLiteral = nonZeroDigit {digit} ["." digit {digit}];
 
-dictionaryLiteral = "{" [singleExpression ":" singleExpression {"," singleExpression ":" singleExpression }] "}";
+dictionaryLiteral = "{" [expression ":" expression {"," expression ":" expression }] "}";
 
 nullLiteral = "null";
