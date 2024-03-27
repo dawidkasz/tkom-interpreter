@@ -2,6 +2,7 @@ program = {variableDeclaration | functionDefinition};
 
 statement = ifStatement |
             whileStatement |
+            forEachStatement |
             variableDeclaration |
             assignment |
             functionCall |
@@ -17,16 +18,18 @@ ifStatement = "if" "(" expression ")" statementBlock ["else" statementBlock];
 
 whileStatement = "while" "(" expression ")" statementBlock;
 
-variableDeclaration = type identifier ["=" expression];
+forEachStatement = "foreach" "(" simpleType identifier ":" identifier ")" statementBlock;
 
-assignment = identifier "=" expression |
-             identifier "[" expression "]" "=" expression;
+variableDeclaration = type identifier ["=" expression] ";";
 
-functionCall = identifier argumentList;
+assignment = (identifier "=" expression ";") |
+             (identifier "[" expression "]" "=" expression ";");
+
+functionCall = functionCallAsExpression ";";
 
 argumentList = "(" [expression, {"," expression}] ")";
 
-returnStatement = "return" expression;
+returnStatement = "return" expression ";";
 
 expression = andExpression {orOperator andExpression};
 
@@ -36,9 +39,7 @@ relationExpression = additiveExpression {relationOperator additiveExpression};
 
 additiveExpression = multiplicativeExpression {additiveOperator multiplicativeExpression};
 
-multiplicativeExpression = nonNullableExpression {multiplicativeOperator nonNullableExpression};
-
-nonNullableExpression = negatedSingleExpression ["?"];
+multiplicativeExpression = negatedSingleExpression {multiplicativeOperator negatedSingleExpression};
 
 negatedSingleExpression = ["!" | "-"] castedExpression;
 
@@ -47,8 +48,10 @@ castedExpression = singleExpression ["as" simpleType];
 singleExpression = identifier |
                    literal |
                    "(" expression ")" |
-                   functionCall |
-                   identifier "[" expression "]";
+                   functionCallAsExpression |
+                   identifier "[" expression "]" ["?"];
+
+functionCallAsExpression = identifier argumentList;
 
 functionReturnType = type | "void";
 
@@ -85,7 +88,7 @@ identifier = (letter | "_") {letter | digit | "_"};
 literal = stringLiteral |
           numberLiteral |
           dictionaryLiteral |
-          nullLiteral;
+          "null";
 
 letter = "a".."z" | "A".."Z";
 
@@ -98,5 +101,3 @@ stringLiteral = "\"" .. "\"";
 numberLiteral = nonZeroDigit {digit} ["." digit {digit}];
 
 dictionaryLiteral = "{" [expression ":" expression {"," expression ":" expression }] "}";
-
-nullLiteral = "null";
