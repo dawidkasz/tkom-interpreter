@@ -2,7 +2,6 @@ package lexer.characterprovider;
 
 import lexer.PositionedCharacter;
 import lexer.TextPositionTracker;
-import lexer.characterprovider.CharacterProvider;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -40,7 +39,7 @@ public class FileCharacterProvider implements CharacterProvider, AutoCloseable {
         char currentChar = this.nextChar;
         advance();
 
-        tracker.move(currentChar);
+        tracker.updatePosition(currentChar);
 
         return tracker.getPosition();
     }

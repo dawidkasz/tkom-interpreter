@@ -5,7 +5,7 @@ public class TextPositionTracker {
     private int currentColumn = 1;
     private Character previousChar = null;
 
-    public void move(Character nextChar) {
+    public void updatePosition(Character nextChar) {
         if (previousChar == null) {
             previousChar = nextChar;
             return;

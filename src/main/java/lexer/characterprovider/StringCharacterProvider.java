@@ -2,7 +2,6 @@ package lexer.characterprovider;
 
 import lexer.PositionedCharacter;
 import lexer.TextPositionTracker;
-import lexer.characterprovider.CharacterProvider;
 
 import java.util.NoSuchElementException;
 
@@ -21,7 +20,7 @@ public class StringCharacterProvider implements CharacterProvider {
             throw new NoSuchElementException("No more characters to read");
         }
 
-        tracker.move(textInput.charAt(index++));
+        tracker.updatePosition(textInput.charAt(index++));
 
         return tracker.getPosition();
     }
