@@ -44,8 +44,6 @@ public final class TokenTypeMapper {
             Map.entry("=", TokenType.ASSIGNMENT)
     );
 
-    public static final Set<String> SIGNS = Set.of("=", "<", ">", "!", "&", "|");
-
     public static final Map<String, TokenType> DOUBLE_SIGN_OPERATORS = Map.of(
             "<=", TokenType.LESS_THAN_OR_EQUAL_OPERATOR,
             ">=", TokenType.GREATER_THAN_OR_EQUAL_OPERATOR,
@@ -54,4 +52,6 @@ public final class TokenTypeMapper {
             "||", TokenType.OR_OPERATOR,
             "&&", TokenType.AND_OPERATOR
     );
+
+    public static final Set<String> SIGNS_THAT_MIGHT_LEAD_TO_DOUBLE_SIGN_OPERATOR = Set.of("=", "<", ">", "!", "&", "|");
 }

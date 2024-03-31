@@ -6,7 +6,7 @@ import java.util.Optional;
 
 import static lexer.TokenTypeMapper.DOUBLE_SIGN_OPERATORS;
 import static lexer.TokenTypeMapper.KEYWORDS;
-import static lexer.TokenTypeMapper.SIGNS;
+import static lexer.TokenTypeMapper.SIGNS_THAT_MIGHT_LEAD_TO_DOUBLE_SIGN_OPERATOR;
 import static lexer.TokenTypeMapper.SINGLE_SIGN_OPERATORS;
 
 public class Lexer {
@@ -155,7 +155,7 @@ public class Lexer {
         String firstChar = String.valueOf(currentCharacter);
         Position position = currentCharacter.position();
 
-        if (!SINGLE_SIGN_OPERATORS.containsKey(firstChar) && !SIGNS.contains(firstChar)) {
+        if (!SINGLE_SIGN_OPERATORS.containsKey(firstChar) && !SIGNS_THAT_MIGHT_LEAD_TO_DOUBLE_SIGN_OPERATOR.contains(firstChar)) {
             return Optional.empty();
         }
 
