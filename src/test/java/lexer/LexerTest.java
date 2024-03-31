@@ -1,35 +1,116 @@
 package lexer;
 
+import org.assertj.core.util.FloatComparator;
 import org.junit.jupiter.api.Test;
-import token.Token;
-import token.TokenType;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
+import static lexer.TokenTypeMapper.KEYWORDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.in;
 
 public class LexerTest {
-    @Test
-    void test_simple_variable_declaration() {
-        List<Token> tokens = tokenize("int _x_y1z =  4321 ;");
+    @ParameterizedTest
+    @CsvSource({"x", "xyz", "_xyz", "_", "_x_y_z", "x33", "_1", "intx", "xint"})
+    void should_match_identifier_when_initializing_a_variable(String variableName) {
+        List<Token> tokens = tokenize(String.format("int %s =  123 ;", variableName));
 
         assertThat(tokens).hasSize(5);
 
-        assertThat(tokens.get(0)).matches(t -> t.tokenType().equals(TokenType.INT_KEYWORD));
+        assertThat(tokens.get(0)).extracting(Token::tokenType).isEqualTo(TokenType.INT_KEYWORD);
 
         assertThat(tokens.get(1))
                 .matches(t -> t.tokenType().equals(TokenType.IDENTIFIER))
-                .matches(t -> t.value().equals("_x_y1z"));
+                .matches(t -> t.value().equals(variableName));
 
-        assertThat(tokens.get(2)).matches(t -> t.tokenType().equals(TokenType.ASSIGNMENT));
+        assertThat(tokens.get(2)).extracting(Token::tokenType).isEqualTo(TokenType.ASSIGNMENT);
 
         assertThat(tokens.get(3))
                 .matches(t -> t.tokenType().equals(TokenType.INT_LITERAL))
-                .matches(t -> t.value().equals(4321));
+                .matches(t -> t.value().equals(123));
 
-        assertThat(tokens.get(4)).matches(t -> t.tokenType().equals(TokenType.SEMICOLON));
+        assertThat(tokens.get(4)).extracting(Token::tokenType).isEqualTo(TokenType.SEMICOLON);
     }
+
+    @ParameterizedTest
+    @CsvSource({"if", "else", "while", "foreach", "return", "as", "void", "int", "float", "string", "dict", "null"})
+    void should_match_keywords(String keywordName) {
+        List<Token> tokens = tokenize(String.format("    \n\n  %s \n", keywordName));
+
+        assertThat(tokens)
+                .first()
+                .matches(t -> t.tokenType().equals(KEYWORDS.get(keywordName)))
+                .matches(t -> t.value().equals(keywordName))
+                .extracting(Token::position)
+                .matches(p -> p.lineNumber() == 3 && p.columnNumber() == 3);
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideStringsForStringLiteralMatchingTest")
+    void should_match_string_literals(String escapedString, String expectedValue) {
+        System.out.println(escapedString);
+        System.out.println(expectedValue);
+        List<Token> tokens = tokenize(escapedString);
+
+        assertThat(tokens)
+                .first()
+                .matches(t -> t.tokenType().equals(TokenType.STRING_LITERAL))
+                .matches(t -> t.value().equals(expectedValue));
+    }
+
+    private static Stream<Arguments> provideStringsForStringLiteralMatchingTest() {
+        return Stream.of(
+                Arguments.of("\"x y z\"", "x y z"),
+                Arguments.of("\"aa\\n x \\t\\nbb\"", "aa\n x \t\nbb"),
+                Arguments.of("\"\\\\\"", "\\"),
+                Arguments.of("\"\\\"  \\\"\\n \\\\ x \"", "\"  \"\n \\ x ")
+        );
+    }
+
+
+    @ParameterizedTest
+    @CsvSource({"0", "4", "2500", "1234567890"})
+    void should_match_int_literals(String intLiteral) {
+        List<Token> tokens = tokenize(intLiteral);
+
+        assertThat(tokens)
+                .first()
+                .matches(t -> t.tokenType().equals(TokenType.INT_LITERAL))
+                .matches(t -> t.value().equals(Integer.valueOf(intLiteral)));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0.0", "0.1", "0.0008", "1.0", "0.42013", "5002710.58769"})
+    void should_match_float_literals(String floatLiteral) {
+        List<Token> tokens = tokenize(floatLiteral);
+
+        assertThat(tokens)
+                .first()
+                .matches(t -> t.tokenType().equals(TokenType.FLOAT_LITERAL))
+                .extracting(Token::value)
+                .matches(v -> new FloatComparator(1e-6f).compare((Float) v, Float.parseFloat(floatLiteral)) == 0);
+    }
+
+    @Test
+    void should_tokenize_identifier_when_overlaps_with_keyword() {
+        List<Token> tokens = tokenize("int intxxx;");
+
+        assertThat(tokens).hasSize(3);
+
+        assertThat(tokens.get(0)).matches(t -> t.tokenType().equals(TokenType.INT_KEYWORD));
+        assertThat(tokens.get(1))
+                .matches(t -> t.tokenType().equals(TokenType.IDENTIFIER))
+                .matches(t -> t.value().equals("intxxx"));
+        assertThat(tokens.get(2)).matches(t -> t.tokenType().equals(TokenType.SEMICOLON));
+    }
+
+
 
     @Test
     void test_expression_assignment() {

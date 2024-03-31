@@ -1,4 +1,4 @@
-package token;
+package lexer;
 
 import java.util.Map;
 import java.util.Set;
@@ -22,7 +22,7 @@ public final class TokenTypeMapper {
             Map.entry("null", TokenType.NULL_KEYWORD)
     );
 
-    public static final Map<String, TokenType> SIMPLE_SIGNS = Map.ofEntries(
+    public static final Map<String, TokenType> SINGLE_SIGN_OPERATORS = Map.ofEntries(
             Map.entry("(", TokenType.LEFT_ROUND_BRACKET),
             Map.entry(")", TokenType.RIGHT_ROUND_BRACKET),
             Map.entry("[", TokenType.LEFT_SQUARE_BRACKET),
@@ -37,17 +37,14 @@ public final class TokenTypeMapper {
             Map.entry("*", TokenType.MULTIPLICATION_OPERATOR),
             Map.entry("/", TokenType.DIVISION_OPERATOR),
             Map.entry("%", TokenType.MODULO_OPERATOR),
-            Map.entry("?", TokenType.NOT_NULL_OPERATOR)
+            Map.entry("?", TokenType.NULLABLE_OPERATOR),
+            Map.entry("<", TokenType.LESS_THAN_OPERATOR),
+            Map.entry(">", TokenType.GREATER_THAN_OPERATOR),
+            Map.entry("!", TokenType.NEGATION_OPERATOR),
+            Map.entry("=", TokenType.ASSIGNMENT)
     );
 
     public static final Set<String> SIGNS = Set.of("=", "<", ">", "!", "&", "|");
-
-    public static final Map<String, TokenType> SINGLE_SIGN_OPERATORS = Map.of(
-            "<", TokenType.LESS_THAN_OPERATOR,
-            ">", TokenType.GREATER_THAN_OPERATOR,
-            "!", TokenType.NEGATION_OPERATOR,
-            "=", TokenType.ASSIGNMENT
-    );
 
     public static final Map<String, TokenType> DOUBLE_SIGN_OPERATORS = Map.of(
             "<=", TokenType.LESS_THAN_OR_EQUAL_OPERATOR,

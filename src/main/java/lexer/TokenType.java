@@ -1,4 +1,4 @@
-package token;
+package lexer;
 
 public enum TokenType {
     IF_KEYWORD,
@@ -31,7 +31,7 @@ public enum TokenType {
     DIVISION_OPERATOR,
     MODULO_OPERATOR,
     NEGATION_OPERATOR,
-    NOT_NULL_OPERATOR,
+    NULLABLE_OPERATOR,
 
     OR_OPERATOR,
     AND_OPERATOR,

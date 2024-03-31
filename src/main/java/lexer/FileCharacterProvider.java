@@ -8,6 +8,7 @@ import java.util.NoSuchElementException;
 
 public class FileCharacterProvider implements CharacterProvider, AutoCloseable {
     private final InputStreamReader fileReader;
+    private final TextPositionTracker tracker = new TextPositionTracker();
     private char nextChar;
     private boolean isEndOfFile = false;
 
@@ -27,7 +28,7 @@ public class FileCharacterProvider implements CharacterProvider, AutoCloseable {
     }
 
     @Override
-    public Character next() {
+    public PositionedCharacter next() {
         if (!hasNext()) {
             throw new NoSuchElementException("No more characters to read");
         }
@@ -35,7 +36,9 @@ public class FileCharacterProvider implements CharacterProvider, AutoCloseable {
         char currentChar = this.nextChar;
         advance();
 
-        return currentChar;
+        tracker.move(currentChar);
+
+        return tracker.getPosition();
     }
 
     @Override
