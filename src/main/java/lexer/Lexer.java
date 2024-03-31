@@ -21,14 +21,14 @@ public class Lexer {
         skipWhiteCharacters();
 
         if (isEndOfFile) {
-            return new Token(TokenType.EOF, currentCharacter.position(), null);
+            return Token.eof(currentCharacter.position());
         }
 
         return processKeywordOrIdentifier()
                 .or(this::processStringLiteral)
                 .or(this::processNumberLiteral)
                 .or(this::processSpecialCharacter)
-                .orElseThrow(() -> new RuntimeException("Unrecognized token"));
+                .orElseThrow(() -> new LexerException("Unrecognized token", currentCharacter.position()));
     }
 
     private void skipWhiteCharacters() {
@@ -46,17 +46,14 @@ public class Lexer {
         Position position = currentCharacter.position();
 
         while (
-                !isEndOfFile && (
-                    Character.isLetter(currentCharacter.character()) ||
-                    Character.isDigit(currentCharacter.character()) ||
-                    currentCharacter.character() == '_'
-                )
+            !isEndOfFile &&
+            (Character.isLetter(currentCharacter.character()) || Character.isDigit(currentCharacter.character()) || currentCharacter.character() == '_')
         ) {
             buffer.append(currentCharacter.character());
             readNextCharacter();
         }
 
-        return matchWithKeywordTokenType(buffer.toString())
+        return mapValueToKeywordTokenType(buffer.toString())
                 .map(keywordTokenType -> new Token(keywordTokenType, position, buffer.toString()))
                 .or(() -> Optional.of(new Token(TokenType.IDENTIFIER, position, buffer.toString())));
     }
@@ -66,17 +63,17 @@ public class Lexer {
             return Optional.empty();
         }
 
-        readNextCharacter();
-
         var buffer = new StringBuilder();
         Position position = currentCharacter.position();
+
+        readNextCharacter();
 
         boolean escapeNextChar = false;
 
         while (!isEndOfFile) {
             if (escapeNextChar) {
                 escapeNextChar = false;
-                buffer.append(escapeCharacterInStringLiteral(currentCharacter.character()));
+                buffer.append(escapeCharacterInStringLiteral(currentCharacter));
             } else if (currentCharacter.character() == '\\') {
                 escapeNextChar = true;
             } else {
@@ -94,13 +91,13 @@ public class Lexer {
         return Optional.of(new Token(TokenType.STRING_LITERAL, position, buffer.toString()));
     }
 
-    private Character escapeCharacterInStringLiteral(Character c) {
-        return switch (c) {
+    private Character escapeCharacterInStringLiteral(PositionedCharacter c) {
+        return switch (c.character()) {
             case '\\' -> '\\';
             case '"' -> '"';
             case 'n' -> '\n';
             case 't' -> '\t';
-            default -> throw new RuntimeException(String.format("Unknown character to escape: '%s'", c));
+            default -> throw new LexerException(String.format("Illegal escape character '\\%s'", c), c.position());
         };
     }
 
@@ -119,7 +116,7 @@ public class Lexer {
                 return Optional.of(new Token(TokenType.FLOAT_LITERAL, position, processFractionalNumberLiteralPart()));
             }
             if (!isEndOfFile && Character.isDigit(currentCharacter.character())) {
-                throw new RuntimeException("can't process leading zeros");
+                throw new LexerException("Leading zeros in number literal", position);
             }
         }
 
@@ -182,7 +179,7 @@ public class Lexer {
             return Optional.of(new Token(singleSignOperatorTokenType, position, firstChar));
         }
 
-        return Optional.empty();
+        throw new LexerException("Invalid operator", position);
     }
 
     private void readNextCharacter() {
@@ -194,7 +191,14 @@ public class Lexer {
         currentCharacter = characterProvider.next();
     }
 
-    private Optional<TokenType> matchWithKeywordTokenType(String value) {
+    private Optional<TokenType> mapValueToKeywordTokenType(String value) {
         return Optional.ofNullable(KEYWORDS.get(value));
     }
+
+    public static class LexerException extends RuntimeException {
+        LexerException(String message, Position position) {
+            super(String.format("%s (line=%s, column=%s)", message, position.lineNumber(), position.columnNumber()));
+        }
+    }
+
 }

@@ -1,5 +1,7 @@
 package lexer;
 
+import static lexer.Lexer.LexerException;
+
 import org.assertj.core.util.FloatComparator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -7,17 +9,20 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static lexer.TokenTypeMapper.DOUBLE_SIGN_OPERATORS;
 import static lexer.TokenTypeMapper.KEYWORDS;
+import static lexer.TokenTypeMapper.SINGLE_SIGN_OPERATORS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.in;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 public class LexerTest {
     @ParameterizedTest
-    @CsvSource({"x", "xyz", "_xyz", "_", "_x_y_z", "x33", "_1", "intx", "xint"})
+    @CsvSource({"x", "xyz", "_xyz", "_", "_x_y_z", "x33", "_1", "intx", "xint", "if_"})
     void should_match_identifier_when_initializing_a_variable(String variableName) {
         List<Token> tokens = tokenize(String.format("int %s =  123 ;", variableName));
 
@@ -39,9 +44,11 @@ public class LexerTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"if", "else", "while", "foreach", "return", "as", "void", "int", "float", "string", "dict", "null"})
+    @MethodSource("provideKeywordsForKeywordMatchingTest")
     void should_match_keywords(String keywordName) {
         List<Token> tokens = tokenize(String.format("    \n\n  %s \n", keywordName));
+
+        assertThat(KEYWORDS).hasSize(12);
 
         assertThat(tokens)
                 .first()
@@ -51,11 +58,13 @@ public class LexerTest {
                 .matches(p -> p.lineNumber() == 3 && p.columnNumber() == 3);
     }
 
+    private static Stream<Arguments> provideKeywordsForKeywordMatchingTest() {
+        return KEYWORDS.keySet().stream().map(Arguments::of);
+    }
+
     @ParameterizedTest
     @MethodSource("provideStringsForStringLiteralMatchingTest")
     void should_match_string_literals(String escapedString, String expectedValue) {
-        System.out.println(escapedString);
-        System.out.println(expectedValue);
         List<Token> tokens = tokenize(escapedString);
 
         assertThat(tokens)
@@ -73,6 +82,12 @@ public class LexerTest {
         );
     }
 
+    @Test
+    void should_throw_an_error_when_escaping_an_illegal_character() {
+        assertThatExceptionOfType(LexerException.class)
+                .isThrownBy(() -> tokenize("\n\nint x = \"\\x\""))
+                .withMessage("Illegal escape character '\\x' (line=3, column=11)");
+    }
 
     @ParameterizedTest
     @CsvSource({"0", "4", "2500", "1234567890"})
@@ -86,7 +101,15 @@ public class LexerTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"0.0", "0.1", "0.0008", "1.0", "0.42013", "5002710.58769"})
+    @CsvSource({"00", "000", "03", "009", "00.0", "000.992", "003.5"})
+    void should_throw_an_error_if_there_are_leading_zeros_in_a_number_literal(String numberLiteral) {
+        assertThatExceptionOfType(LexerException.class)
+                .isThrownBy(() -> tokenize(String.format("%s", numberLiteral)))
+                .withMessage("Leading zeros in number literal (line=1, column=1)");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0.0", "0.1", "0.0008", "1.0", "0.42013", "5002710.58769", "1.000"})
     void should_match_float_literals(String floatLiteral) {
         List<Token> tokens = tokenize(floatLiteral);
 
@@ -97,120 +120,294 @@ public class LexerTest {
                 .matches(v -> new FloatComparator(1e-6f).compare((Float) v, Float.parseFloat(floatLiteral)) == 0);
     }
 
-    @Test
-    void should_tokenize_identifier_when_overlaps_with_keyword() {
-        List<Token> tokens = tokenize("int intxxx;");
+    @ParameterizedTest
+    @MethodSource("provideOperatorsForOperatorsMatchingTest")
+    void should_match_operators(String operator) {
+        List<Token> tokens = tokenize(operator);
 
-        assertThat(tokens).hasSize(3);
+        assertThat(SINGLE_SIGN_OPERATORS).hasSize(19);
+        assertThat(DOUBLE_SIGN_OPERATORS).hasSize(6);
 
-        assertThat(tokens.get(0)).matches(t -> t.tokenType().equals(TokenType.INT_KEYWORD));
-        assertThat(tokens.get(1))
-                .matches(t -> t.tokenType().equals(TokenType.IDENTIFIER))
-                .matches(t -> t.value().equals("intxxx"));
-        assertThat(tokens.get(2)).matches(t -> t.tokenType().equals(TokenType.SEMICOLON));
+        TokenType expectedTokenType = Optional.ofNullable(SINGLE_SIGN_OPERATORS.get(operator)).orElse(DOUBLE_SIGN_OPERATORS.get(operator));
+
+        assertThat(tokens)
+                .first()
+                .matches(t -> t.tokenType().equals(expectedTokenType))
+                .matches(t -> t.value().equals(operator));
     }
 
+    private static Stream<Arguments> provideOperatorsForOperatorsMatchingTest() {
+        Stream<String> singleOperatorStream = SINGLE_SIGN_OPERATORS.keySet().stream();
+        Stream<String> doubleOperatorStream = DOUBLE_SIGN_OPERATORS.keySet().stream();
 
+        return Stream.concat(singleOperatorStream, doubleOperatorStream).map(Arguments::of);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"|", "&"})
+    void should_throw_an_error_if_operator_is_invalid(String invalidOperator) {
+        assertThatExceptionOfType(LexerException.class)
+                .isThrownBy(() -> tokenize(invalidOperator))
+                .withMessage("Invalid operator (line=1, column=1)");
+    }
 
     @Test
-    void test_expression_assignment() {
-        List<Token> tokens = tokenize("int x = 1 * (2 + 2) / 3 - 4 % 2;");
+    void should_throw_an_error_when_token_cant_be_processed() {
+        assertThatExceptionOfType(LexerException.class)
+                .isThrownBy(() -> tokenize("int x = ';"))
+                .withMessage("Unrecognized token (line=1, column=9)");
+    }
 
-        assertThat(tokens).hasSize(17);
+    @Test
+    void should_skip_white_characters_and_track_position() {
+        List<Token> tokens = tokenize(
+                """
+                        
+                        int          x
+                        
+                        
+                          =
+                          
+                             21
+                        \t;
+                        
+                        """
+        );
 
-        assertThat(tokens.get(3))
+        assertThat(tokens)
+                .extracting(Token::tokenType)
+                .containsExactly(TokenType.INT_KEYWORD, TokenType.IDENTIFIER, TokenType.ASSIGNMENT, TokenType.INT_LITERAL, TokenType.SEMICOLON);
+
+        assertThat(tokens)
+                .extracting(Token::value)
+                .containsExactly("int", "x", "=", 21, ";");
+
+        assertThat(tokens)
+                .extracting(Token::position)
+                .containsExactly(
+                        new Position(2, 1),
+                        new Position(2, 14),
+                        new Position(5, 3),
+                        new Position(7, 6),
+                        new Position(8,2)
+                );
+    }
+
+    @Test
+    void should_process_expression_assignment() {
+        List<Token> tokens = tokenize("int x = 1 * (2 + 2) / 3 - 24 % 2.0 as int;");
+
+        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+                TokenType.INT_KEYWORD,
+                TokenType.IDENTIFIER,
+                TokenType.ASSIGNMENT,
+                TokenType.INT_LITERAL,
+                TokenType.MULTIPLICATION_OPERATOR,
+                TokenType.LEFT_ROUND_BRACKET,
+                TokenType.INT_LITERAL,
+                TokenType.PLUS_OPERATOR,
+                TokenType.INT_LITERAL,
+                TokenType.RIGHT_ROUND_BRACKET,
+                TokenType.DIVISION_OPERATOR,
+                TokenType.INT_LITERAL,
+                TokenType.MINUS_OPERATOR,
+                TokenType.INT_LITERAL,
+                TokenType.MODULO_OPERATOR,
+                TokenType.FLOAT_LITERAL,
+                TokenType.AS_KEYWORD,
+                TokenType.INT_KEYWORD,
+                TokenType.SEMICOLON
+        );
+
+        assertThat(tokens.get(13))
                 .matches(t -> t.tokenType().equals(TokenType.INT_LITERAL))
-                .matches(t -> t.value().equals(1));
-
-        assertThat(tokens.get(4)).matches(t -> t.tokenType().equals(TokenType.MULTIPLICATION_OPERATOR));
-
-        assertThat(tokens.get(5)).matches(t -> t.tokenType().equals(TokenType.LEFT_ROUND_BRACKET));
-
-        assertThat(tokens.get(6)).matches(t -> t.tokenType().equals(TokenType.INT_LITERAL));
-
-        assertThat(tokens.get(7)).matches(t -> t.tokenType().equals(TokenType.PLUS_OPERATOR));
-
-        assertThat(tokens.get(8)).matches(t -> t.tokenType().equals(TokenType.INT_LITERAL));
-
-        assertThat(tokens.get(9)).matches(t -> t.tokenType().equals(TokenType.RIGHT_ROUND_BRACKET));
-
-        assertThat(tokens.get(10)).matches(t -> t.tokenType().equals(TokenType.DIVISION_OPERATOR));
-
-        assertThat(tokens.get(11)).matches(t -> t.tokenType().equals(TokenType.INT_LITERAL));
-
-        assertThat(tokens.get(12)).matches(t -> t.tokenType().equals(TokenType.MINUS_OPERATOR));
-
-        assertThat(tokens.get(13)).matches(t -> t.tokenType().equals(TokenType.INT_LITERAL));
-
-        assertThat(tokens.get(14)).matches(t -> t.tokenType().equals(TokenType.MODULO_OPERATOR));
-
-        assertThat(tokens.get(15)).matches(t -> t.tokenType().equals(TokenType.INT_LITERAL));
+                .matches(t -> t.value().equals(24))
+                .matches(t -> t.position().equals(new Position(1, 27)));
     }
 
     @Test
-    void test_if_statement() {
+    void should_process_dict_assignment() {
+        List<Token> tokens = tokenize("dict[int, string] map = {1: \"a\\\"b\"};");
+
+        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+                TokenType.DICT_KEYWORD,
+                TokenType.LEFT_SQUARE_BRACKET,
+                TokenType.INT_KEYWORD,
+                TokenType.COMMA,
+                TokenType.STRING_KEYWORD,
+                TokenType.RIGHT_SQUARE_BRACKET,
+                TokenType.IDENTIFIER,
+                TokenType.ASSIGNMENT,
+                TokenType.LEFT_CURLY_BRACKET,
+                TokenType.INT_LITERAL,
+                TokenType.COLON,
+                TokenType.STRING_LITERAL,
+                TokenType.RIGHT_CURLY_BRACKET,
+                TokenType.SEMICOLON
+        );
+
+        assertThat(tokens.get(11))
+                .matches(t -> t.tokenType().equals(TokenType.STRING_LITERAL))
+                .matches(t -> t.value().equals("a\"b"))
+                .matches(t -> t.position().equals(new Position(1, 29)));
+    }
+
+    @Test
+    void should_process_if_statement() {
         List<Token> tokens = tokenize("""
-            int x = 5;
-            if (x <= 6 || 2 == 3 && 2 != 3) {
+            if (x <= 6 || 2 == 3 && 2 != abc()) {
                 print(1 as string);
             }
-        """);
+            """
+        );
 
-        assertThat(tokens).hasSize(28);
+        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+                TokenType.IF_KEYWORD,
+                TokenType.LEFT_ROUND_BRACKET,
+                TokenType.IDENTIFIER,
+                TokenType.LESS_THAN_OR_EQUAL_OPERATOR,
+                TokenType.INT_LITERAL,
+                TokenType.OR_OPERATOR,
+                TokenType.INT_LITERAL,
+                TokenType.EQUAL_OPERATOR,
+                TokenType.INT_LITERAL,
+                TokenType.AND_OPERATOR,
+                TokenType.INT_LITERAL,
+                TokenType.NOT_EQUAL_OPERATOR,
+                TokenType.IDENTIFIER,
+                TokenType.LEFT_ROUND_BRACKET,
+                TokenType.RIGHT_ROUND_BRACKET,
+                TokenType.RIGHT_ROUND_BRACKET,
+                TokenType.LEFT_CURLY_BRACKET,
+                TokenType.IDENTIFIER,
+                TokenType.LEFT_ROUND_BRACKET,
+                TokenType.INT_LITERAL,
+                TokenType.AS_KEYWORD,
+                TokenType.STRING_KEYWORD,
+                TokenType.RIGHT_ROUND_BRACKET,
+                TokenType.SEMICOLON,
+                TokenType.RIGHT_CURLY_BRACKET
+        );
 
-        assertThat(tokens.get(5)).matches(t -> t.tokenType().equals(TokenType.IF_KEYWORD));
-        assertThat(tokens.get(8)).matches(t -> t.tokenType().equals(TokenType.LESS_THAN_OR_EQUAL_OPERATOR));
-        assertThat(tokens.get(10)).matches(t -> t.tokenType().equals(TokenType.OR_OPERATOR));
-        assertThat(tokens.get(12)).matches(t -> t.tokenType().equals(TokenType.EQUAL_OPERATOR));
-        assertThat(tokens.get(14)).matches(t -> t.tokenType().equals(TokenType.AND_OPERATOR));
-        assertThat(tokens.get(16)).matches(t -> t.tokenType().equals(TokenType.NOT_EQUAL_OPERATOR));
-        assertThat(tokens.get(19)).matches(t -> t.tokenType().equals(TokenType.LEFT_CURLY_BRACKET));
-
-        assertThat(tokens.get(20))
+        assertThat(tokens.get(17))
                 .matches(t -> t.tokenType().equals(TokenType.IDENTIFIER))
-                .matches(t -> t.value().equals("print"));
-
-        assertThat(tokens.get(23)).matches(t -> t.tokenType().equals(TokenType.AS_KEYWORD));
-
-        assertThat(tokens.get(24)).matches(t -> t.tokenType().equals(TokenType.STRING_KEYWORD));
-
-        assertThat(tokens.get(27)).matches(t -> t.tokenType().equals(TokenType.RIGHT_CURLY_BRACKET));
+                .matches(t -> t.value().equals("print"))
+                .matches(t -> t.position().equals(new Position(2, 5)));
 
     }
 
     @Test
-    void test_dict_assignment() {
-        List<Token> tokens = tokenize("dict[int, int] map = {1: 2};");
+    void should_process_while_statement() {
+        List<Token> tokens = tokenize("""
+            while(x<5) {
+                process(some_map[id(x)]?);
+                x = x + 1;
+            }
+            """
+        );
 
-        assertThat(tokens).hasSize(14);
-
-        assertThat(tokens.get(0)).matches(t -> t.tokenType().equals(TokenType.DICT_KEYWORD));
-        assertThat(tokens.get(1)).matches(t -> t.tokenType().equals(TokenType.LEFT_SQUARE_BRACKET));
-        assertThat(tokens.get(2)).matches(t -> t.tokenType().equals(TokenType.INT_KEYWORD));
-        assertThat(tokens.get(3)).matches(t -> t.tokenType().equals(TokenType.COMMA));
-        assertThat(tokens.get(4)).matches(t -> t.tokenType().equals(TokenType.INT_KEYWORD));
-        assertThat(tokens.get(5)).matches(t -> t.tokenType().equals(TokenType.RIGHT_SQUARE_BRACKET));
-        assertThat(tokens.get(6)).matches(t -> t.tokenType().equals(TokenType.IDENTIFIER));
-        assertThat(tokens.get(7)).matches(t -> t.tokenType().equals(TokenType.ASSIGNMENT));
-        assertThat(tokens.get(8)).matches(t -> t.tokenType().equals(TokenType.LEFT_CURLY_BRACKET));
-        assertThat(tokens.get(9)).matches(t -> t.tokenType().equals(TokenType.INT_LITERAL));
-        assertThat(tokens.get(10)).matches(t -> t.tokenType().equals(TokenType.COLON));
-        assertThat(tokens.get(11)).matches(t -> t.tokenType().equals(TokenType.INT_LITERAL));
-        assertThat(tokens.get(12)).matches(t -> t.tokenType().equals(TokenType.RIGHT_CURLY_BRACKET));
-        assertThat(tokens.get(13)).matches(t -> t.tokenType().equals(TokenType.SEMICOLON));
+        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+                TokenType.WHILE_KEYWORD,
+                TokenType.LEFT_ROUND_BRACKET,
+                TokenType.IDENTIFIER,
+                TokenType.LESS_THAN_OPERATOR,
+                TokenType.INT_LITERAL,
+                TokenType.RIGHT_ROUND_BRACKET,
+                TokenType.LEFT_CURLY_BRACKET,
+                TokenType.IDENTIFIER,
+                TokenType.LEFT_ROUND_BRACKET,
+                TokenType.IDENTIFIER,
+                TokenType.LEFT_SQUARE_BRACKET,
+                TokenType.IDENTIFIER,
+                TokenType.LEFT_ROUND_BRACKET,
+                TokenType.IDENTIFIER,
+                TokenType.RIGHT_ROUND_BRACKET,
+                TokenType.RIGHT_SQUARE_BRACKET,
+                TokenType.NULLABLE_OPERATOR,
+                TokenType.RIGHT_ROUND_BRACKET,
+                TokenType.SEMICOLON,
+                TokenType.IDENTIFIER,
+                TokenType.ASSIGNMENT,
+                TokenType.IDENTIFIER,
+                TokenType.PLUS_OPERATOR,
+                TokenType.INT_LITERAL,
+                TokenType.SEMICOLON,
+                TokenType.RIGHT_CURLY_BRACKET
+        );
     }
 
+    @Test
+    void should_process_foreach_statement() {
+        List<Token> tokens = tokenize("foreach (int key: mp) { print(mp[key]); }");
+
+        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+                TokenType.FOREACH_KEYWORD,
+                TokenType.LEFT_ROUND_BRACKET,
+                TokenType.INT_KEYWORD,
+                TokenType.IDENTIFIER,
+                TokenType.COLON,
+                TokenType.IDENTIFIER,
+                TokenType.RIGHT_ROUND_BRACKET,
+                TokenType.LEFT_CURLY_BRACKET,
+                TokenType.IDENTIFIER,
+                TokenType.LEFT_ROUND_BRACKET,
+                TokenType.IDENTIFIER,
+                TokenType.LEFT_SQUARE_BRACKET,
+                TokenType.IDENTIFIER,
+                TokenType.RIGHT_SQUARE_BRACKET,
+                TokenType.RIGHT_ROUND_BRACKET,
+                TokenType.SEMICOLON,
+                TokenType.RIGHT_CURLY_BRACKET
+        );
+    }
+
+    @Test
+    void should_process_function_definition() {
+        List<Token> tokens = tokenize("""
+            void add(int a, int b)
+            {
+                return a + b;
+            }
+            """
+        );
+
+        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+                TokenType.VOID_KEYWORD,
+                TokenType.IDENTIFIER,
+                TokenType.LEFT_ROUND_BRACKET,
+                TokenType.INT_KEYWORD,
+                TokenType.IDENTIFIER,
+                TokenType.COMMA,
+                TokenType.INT_KEYWORD,
+                TokenType.IDENTIFIER,
+                TokenType.RIGHT_ROUND_BRACKET,
+                TokenType.LEFT_CURLY_BRACKET,
+                TokenType.RETURN_KEYWORD,
+                TokenType.IDENTIFIER,
+                TokenType.PLUS_OPERATOR,
+                TokenType.IDENTIFIER,
+                TokenType.SEMICOLON,
+                TokenType.RIGHT_CURLY_BRACKET
+        );
+    }
+
+    @Test
+    void should_return_eof_as_last_token() {
+        Lexer lexer = new Lexer(new StringCharacterProvider("\n x \n 123  \n "));
+
+        assertThat(lexer.nextToken()).matches(t -> t.tokenType().equals(TokenType.IDENTIFIER));
+        assertThat(lexer.nextToken()).matches(t -> t.tokenType().equals(TokenType.INT_LITERAL));
+        assertThat(lexer.nextToken()).matches(t -> t.tokenType().equals(TokenType.EOF));
+        assertThat(lexer.nextToken()).matches(t -> t.tokenType().equals(TokenType.EOF));
+        assertThat(lexer.nextToken()).matches(t -> t.tokenType().equals(TokenType.EOF));
+    }
+
+
     private List<Token> tokenize(String input) {
-        var lexer = new Lexer(new StringCharacterProvider(input));
+        Lexer lexer = new Lexer(new StringCharacterProvider(input));
 
-        List<Token> tokens = new ArrayList<>();
-
-        Token token;
-        while ((token = lexer.nextToken()).tokenType() != TokenType.EOF) {
-            System.out.println(token);
-            tokens.add(token);
-        }
-
-        return tokens;
+        return Stream.generate(lexer::nextToken)
+                .takeWhile(t -> !t.tokenType().equals(TokenType.EOF))
+                .collect(Collectors.toList());
     }
 }
