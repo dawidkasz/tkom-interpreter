@@ -1,6 +1,6 @@
 package lexer;
 
-public class TextPositionTracker {
+public class PositionTracker {
     private int currentLine = 1;
     private int currentColumn = 1;
     private Character previousChar = null;

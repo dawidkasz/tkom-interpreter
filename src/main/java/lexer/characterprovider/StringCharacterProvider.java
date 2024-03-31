@@ -1,13 +1,13 @@
 package lexer.characterprovider;
 
 import lexer.PositionedCharacter;
-import lexer.TextPositionTracker;
+import lexer.PositionTracker;
 
 import java.util.NoSuchElementException;
 
 public class StringCharacterProvider implements CharacterProvider {
     private final String textInput;
-    private final TextPositionTracker tracker = new TextPositionTracker();
+    private final PositionTracker positionTracker = new PositionTracker();
     private int index = 0;
 
     public StringCharacterProvider(String textInput) {
@@ -20,9 +20,9 @@ public class StringCharacterProvider implements CharacterProvider {
             throw new NoSuchElementException("No more characters to read");
         }
 
-        tracker.updatePosition(textInput.charAt(index++));
+        positionTracker.updatePosition(textInput.charAt(index++));
 
-        return tracker.getPosition();
+        return positionTracker.getPosition();
     }
 
     @Override

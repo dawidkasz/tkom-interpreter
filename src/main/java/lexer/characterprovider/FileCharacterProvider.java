@@ -1,7 +1,7 @@
 package lexer.characterprovider;
 
 import lexer.PositionedCharacter;
-import lexer.TextPositionTracker;
+import lexer.PositionTracker;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -11,7 +11,7 @@ import java.util.NoSuchElementException;
 
 public class FileCharacterProvider implements CharacterProvider, AutoCloseable {
     private final InputStreamReader fileReader;
-    private final TextPositionTracker tracker = new TextPositionTracker();
+    private final PositionTracker positionTracker = new PositionTracker();
     private char nextChar;
     private boolean isEndOfFile = false;
 
@@ -39,9 +39,9 @@ public class FileCharacterProvider implements CharacterProvider, AutoCloseable {
         char currentChar = this.nextChar;
         advance();
 
-        tracker.updatePosition(currentChar);
+        positionTracker.updatePosition(currentChar);
 
-        return tracker.getPosition();
+        return positionTracker.getPosition();
     }
 
     @Override
