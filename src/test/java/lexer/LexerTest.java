@@ -25,8 +25,13 @@ public class LexerTest {
     @ParameterizedTest
     @CsvSource({"x", "xyz", "_xyz", "_", "_x_y_z", "x33", "_1", "intx", "xint", "if_"})
     void should_match_identifier_when_initializing_a_variable(String variableName) {
-        List<Token> tokens = tokenize(String.format("int %s =  123 ;", variableName));
+        // given
+        String text = String.format("int %s =  123 ;", variableName);
 
+        // when
+        List<Token> tokens = tokenize(text);
+
+        // then
         assertThat(tokens).hasSize(5);
 
         assertThat(tokens.get(0)).extracting(Token::tokenType).isEqualTo(TokenType.INT_KEYWORD);
@@ -47,8 +52,13 @@ public class LexerTest {
     @ParameterizedTest
     @MethodSource("provideKeywordsForKeywordMatchingTest")
     void should_match_keywords(String keywordName) {
-        List<Token> tokens = tokenize(String.format("    \n\n  %s \n", keywordName));
+        // given
+        String text = String.format("    \n\n  %s \n", keywordName);
 
+        // when
+        List<Token> tokens = tokenize(text);
+
+        // then
         assertThat(KEYWORDS).hasSize(12);
 
         assertThat(tokens)
@@ -66,8 +76,10 @@ public class LexerTest {
     @ParameterizedTest
     @MethodSource("provideStringsForStringLiteralMatchingTest")
     void should_match_string_literals(String escapedString, String expectedValue) {
+        // when
         List<Token> tokens = tokenize(escapedString);
 
+        // then
         assertThat(tokens)
                 .first()
                 .matches(t -> t.tokenType().equals(TokenType.STRING_LITERAL))
@@ -85,16 +97,22 @@ public class LexerTest {
 
     @Test
     void should_throw_an_error_when_escaping_an_illegal_character() {
+        // given
+        String text = "\n\nint x = \"\\x\"";
+
+        // then
         assertThatExceptionOfType(LexerException.class)
-                .isThrownBy(() -> tokenize("\n\nint x = \"\\x\""))
+                .isThrownBy(() -> tokenize(text))
                 .withMessage("Illegal escape character '\\x' (line=3, column=11)");
     }
 
     @ParameterizedTest
     @CsvSource({"0", "4", "2500", "1234567890"})
     void should_match_int_literals(String intLiteral) {
+        // when
         List<Token> tokens = tokenize(intLiteral);
 
+        // then
         assertThat(tokens)
                 .first()
                 .matches(t -> t.tokenType().equals(TokenType.INT_LITERAL))
@@ -104,16 +122,22 @@ public class LexerTest {
     @ParameterizedTest
     @CsvSource({"00", "000", "03", "009", "00.0", "000.992", "003.5"})
     void should_throw_an_error_if_there_are_leading_zeros_in_a_number_literal(String numberLiteral) {
+        // given
+        String expectedMessage = "Leading zeros in number literal (line=1, column=1)";
+
+        // then
         assertThatExceptionOfType(LexerException.class)
-                .isThrownBy(() -> tokenize(String.format("%s", numberLiteral)))
-                .withMessage("Leading zeros in number literal (line=1, column=1)");
+                .isThrownBy(() -> tokenize(numberLiteral))
+                .withMessage(expectedMessage);
     }
 
     @ParameterizedTest
     @CsvSource({"0.0", "0.1", "0.0008", "1.0", "0.42013", "5002710.58769", "1.000"})
     void should_match_float_literals(String floatLiteral) {
+        // when
         List<Token> tokens = tokenize(floatLiteral);
 
+        // then
         assertThat(tokens)
                 .first()
                 .matches(t -> t.tokenType().equals(TokenType.FLOAT_LITERAL))
@@ -124,12 +148,15 @@ public class LexerTest {
     @ParameterizedTest
     @MethodSource("provideOperatorsForOperatorsMatchingTest")
     void should_match_operators(String operator) {
+        // given
+        TokenType expectedTokenType = Optional.ofNullable(SINGLE_SIGN_OPERATORS.get(operator)).orElse(DOUBLE_SIGN_OPERATORS.get(operator));
+
+        // when
         List<Token> tokens = tokenize(operator);
 
+        // then
         assertThat(SINGLE_SIGN_OPERATORS).hasSize(19);
         assertThat(DOUBLE_SIGN_OPERATORS).hasSize(6);
-
-        TokenType expectedTokenType = Optional.ofNullable(SINGLE_SIGN_OPERATORS.get(operator)).orElse(DOUBLE_SIGN_OPERATORS.get(operator));
 
         assertThat(tokens)
                 .first()
@@ -147,34 +174,46 @@ public class LexerTest {
     @ParameterizedTest
     @CsvSource({"|", "&"})
     void should_throw_an_error_if_operator_is_invalid(String invalidOperator) {
+        // given
+        String expectedMessage = "Invalid operator (line=1, column=1)";
+
+        // then
         assertThatExceptionOfType(LexerException.class)
                 .isThrownBy(() -> tokenize(invalidOperator))
-                .withMessage("Invalid operator (line=1, column=1)");
+                .withMessage(expectedMessage);
     }
 
     @Test
     void should_throw_an_error_when_token_cant_be_processed() {
+        // given
+        String text = "int x = ';";
+        String expectedMessage = "Unrecognized token (line=1, column=9)";
+
+        // then
         assertThatExceptionOfType(LexerException.class)
-                .isThrownBy(() -> tokenize("int x = ';"))
-                .withMessage("Unrecognized token (line=1, column=9)");
+                .isThrownBy(() -> tokenize(text))
+                .withMessage(expectedMessage);
     }
 
     @Test
     void should_skip_white_characters_and_track_position() {
-        List<Token> tokens = tokenize(
-                """
-                        
-                        int          x
-                        
-                        
-                          =
-                          
-                             21
-                        \t;
-                        
-                        """
-        );
+        //given
+        String text = """
+                
+        int          x
+        
+        
+          =
+          
+             21
+        \t;
+        
+        """;
 
+        // when
+        List<Token> tokens = tokenize(text);
+
+        // then
         assertThat(tokens)
                 .extracting(Token::tokenType)
                 .containsExactly(TokenType.INT_KEYWORD, TokenType.IDENTIFIER, TokenType.ASSIGNMENT, TokenType.INT_LITERAL, TokenType.SEMICOLON);
@@ -196,8 +235,13 @@ public class LexerTest {
 
     @Test
     void should_process_expression_assignment() {
-        List<Token> tokens = tokenize("int x = 1 * (2 + 2) / 3 - 24 % 2.0 as int;");
+        // given
+        String text = "int x = 1 * (2 + 2) / 3 - 24 % 2.0 as int;";
 
+        // when
+        List<Token> tokens = tokenize(text);
+
+        // then
         assertThat(tokens).extracting(Token::tokenType).containsExactly(
                 TokenType.INT_KEYWORD,
                 TokenType.IDENTIFIER,
@@ -228,8 +272,13 @@ public class LexerTest {
 
     @Test
     void should_process_dict_assignment() {
-        List<Token> tokens = tokenize("dict[int, string] map = {1: \"a\\\"b\"};");
+        // given
+        String text = "dict[int, string] map = {1: \"a\\\"b\"};";
 
+        // when
+        List<Token> tokens = tokenize(text);
+
+        // then
         assertThat(tokens).extracting(Token::tokenType).containsExactly(
                 TokenType.DICT_KEYWORD,
                 TokenType.LEFT_SQUARE_BRACKET,
@@ -255,13 +304,17 @@ public class LexerTest {
 
     @Test
     void should_process_if_statement() {
-        List<Token> tokens = tokenize("""
+        // given
+        String text = """
             if (x <= 6 || 2 == 3 && 2 != abc()) {
                 print(1 as string);
             }
-            """
-        );
+            """;
 
+        // when
+        List<Token> tokens = tokenize(text );
+
+        // then
         assertThat(tokens).extracting(Token::tokenType).containsExactly(
                 TokenType.IF_KEYWORD,
                 TokenType.LEFT_ROUND_BRACKET,
@@ -299,14 +352,18 @@ public class LexerTest {
 
     @Test
     void should_process_while_statement() {
-        List<Token> tokens = tokenize("""
+        // given
+        String text = """
             while(x<5) {
                 process(some_map[id(x)]?);
                 x = x + 1;
             }
-            """
-        );
+            """;
 
+        // when
+        List<Token> tokens = tokenize(text);
+
+        // then
         assertThat(tokens).extracting(Token::tokenType).containsExactly(
                 TokenType.WHILE_KEYWORD,
                 TokenType.LEFT_ROUND_BRACKET,
@@ -339,8 +396,13 @@ public class LexerTest {
 
     @Test
     void should_process_foreach_statement() {
-        List<Token> tokens = tokenize("foreach (int key: mp) { print(mp[key]); }");
+        // given
+        String text = "foreach (int key: mp) { print(mp[key]); }";
 
+        // when
+        List<Token> tokens = tokenize(text);
+
+        // then
         assertThat(tokens).extracting(Token::tokenType).containsExactly(
                 TokenType.FOREACH_KEYWORD,
                 TokenType.LEFT_ROUND_BRACKET,
@@ -364,14 +426,18 @@ public class LexerTest {
 
     @Test
     void should_process_function_definition() {
-        List<Token> tokens = tokenize("""
+        // given
+        String text = """
             void add(int a, int b)
             {
                 return a + b;
             }
-            """
-        );
+            """;
 
+        // when
+        List<Token> tokens = tokenize(text);
+
+        // then
         assertThat(tokens).extracting(Token::tokenType).containsExactly(
                 TokenType.VOID_KEYWORD,
                 TokenType.IDENTIFIER,
@@ -394,15 +460,17 @@ public class LexerTest {
 
     @Test
     void should_return_eof_as_last_token() {
+        // given
         Lexer lexer = new Lexer(new StringCharacterProvider("\n x \n 123  \n "));
 
-        assertThat(lexer.nextToken()).matches(t -> t.tokenType().equals(TokenType.IDENTIFIER));
-        assertThat(lexer.nextToken()).matches(t -> t.tokenType().equals(TokenType.INT_LITERAL));
-        assertThat(lexer.nextToken()).matches(t -> t.tokenType().equals(TokenType.EOF));
-        assertThat(lexer.nextToken()).matches(t -> t.tokenType().equals(TokenType.EOF));
-        assertThat(lexer.nextToken()).matches(t -> t.tokenType().equals(TokenType.EOF));
-    }
+        // when
+        List<Token> tokens = List.of(lexer.nextToken(), lexer.nextToken(), lexer.nextToken(), lexer.nextToken());
 
+        // then
+        assertThat(tokens)
+                .extracting(Token::tokenType)
+                .containsExactly(TokenType.IDENTIFIER, TokenType.INT_LITERAL, TokenType.EOF, TokenType.EOF);
+    }
 
     private List<Token> tokenize(String input) {
         Lexer lexer = new Lexer(new StringCharacterProvider(input));
