@@ -2,6 +2,7 @@ package lexer;
 
 import static lexer.Lexer.LexerException;
 
+import lexer.characterprovider.StringCharacterProvider;
 import org.assertj.core.util.FloatComparator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

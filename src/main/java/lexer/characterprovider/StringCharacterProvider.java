@@ -1,4 +1,10 @@
-package lexer;
+package lexer.characterprovider;
+
+import lexer.PositionedCharacter;
+import lexer.TextPositionTracker;
+import lexer.characterprovider.CharacterProvider;
+
+import java.util.NoSuchElementException;
 
 public class StringCharacterProvider implements CharacterProvider {
     private final String textInput;
@@ -12,7 +18,7 @@ public class StringCharacterProvider implements CharacterProvider {
     @Override
     public PositionedCharacter next() {
         if (!hasNext()) {
-            throw new RuntimeException("No more characters to read");
+            throw new NoSuchElementException("No more characters to read");
         }
 
         tracker.move(textInput.charAt(index++));

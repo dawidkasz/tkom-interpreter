@@ -1,4 +1,6 @@
-package lexer;
+package lexer.characterprovider;
+
+import lexer.PositionedCharacter;
 
 import java.util.Iterator;
 

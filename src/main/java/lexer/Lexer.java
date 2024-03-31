@@ -1,5 +1,7 @@
 package lexer;
 
+import lexer.characterprovider.CharacterProvider;
+
 import java.util.Optional;
 
 import static lexer.TokenTypeMapper.DOUBLE_SIGN_OPERATORS;
