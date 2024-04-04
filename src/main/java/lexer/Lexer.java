@@ -11,6 +11,7 @@ import static lexer.TokenTypeMapper.SINGLE_SIGN_OPERATORS;
 
 public class Lexer {
     private static final int IDENTIFIER_LENGTH_LIMIT = 128;
+    private static final int STRING_LITERAL_LENGTH_LIMIT = 1024;
 
     private final CharacterProvider characterProvider;
     private PositionedCharacter currentCharacter;
@@ -55,15 +56,17 @@ public class Lexer {
         ) {
             buffer.append(currentCharacter.character());
             if (buffer.length() > IDENTIFIER_LENGTH_LIMIT) {
-                throw new LexerException(String.format("Identifier length limit of %s characters exceeded", IDENTIFIER_LENGTH_LIMIT), position);
+                throw new LexerException(String.format("Identifier length exceeded the limit of %s characters", IDENTIFIER_LENGTH_LIMIT), position);
             }
 
             readNextCharacter();
         }
 
-        return mapValueToKeywordTokenType(buffer.toString())
-                .map(keywordTokenType -> new Token(keywordTokenType, position, buffer.toString()))
-                .or(() -> Optional.of(new Token(TokenType.IDENTIFIER, position, buffer.toString())));
+        String constructedTokenValue = buffer.toString();
+
+        return mapValueToKeywordTokenType(constructedTokenValue)
+                .map(keywordTokenType -> new Token(keywordTokenType, position, constructedTokenValue))
+                .or(() -> Optional.of(new Token(TokenType.IDENTIFIER, position, constructedTokenValue)));
     }
 
     private Optional<Token> processStringLiteral() {
@@ -86,6 +89,10 @@ public class Lexer {
                 escapeNextChar = true;
             } else {
                 buffer.append(currentCharacter.character());
+            }
+
+            if (buffer.length() > STRING_LITERAL_LENGTH_LIMIT) {
+                throw new LexerException(String.format("String literal length exceeded the limit of %s characters", STRING_LITERAL_LENGTH_LIMIT), position);
             }
 
             readNextCharacter();

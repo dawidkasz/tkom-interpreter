@@ -58,7 +58,7 @@ public class LexerTest {
         // then
         assertThatExceptionOfType(LexerException.class)
                 .isThrownBy(() -> tokenize(text))
-                .withMessage("Identifier length limit of 128 characters exceeded (line=1, column=5)");
+                .withMessage("Identifier length exceeded the limit of 128 characters (line=1, column=5)");
     }
 
     @ParameterizedTest
@@ -90,7 +90,8 @@ public class LexerTest {
     void should_match_string_literals(String escapedString, String expectedValue) {
         // when
         List<Token> tokens = tokenize(escapedString);
-
+        System.out.println(escapedString);
+        System.out.println(tokens);
         // then
         assertThat(tokens)
                 .first()
@@ -103,7 +104,8 @@ public class LexerTest {
                 Arguments.of("\"x y z\"", "x y z"),
                 Arguments.of("\"aa\\n x \\t\\nbb\"", "aa\n x \t\nbb"),
                 Arguments.of("\"\\\\\"", "\\"),
-                Arguments.of("\"\\\"  \\\"\\n \\\\ x \"", "\"  \"\n \\ x ")
+                Arguments.of("\"\\\"  \\\"\\n \\\\ x \"", "\"  \"\n \\ x "),
+                Arguments.of("\"x \n y\"", "x \n y")
         );
     }
 
@@ -111,11 +113,25 @@ public class LexerTest {
     void should_throw_an_error_when_escaping_an_illegal_character() {
         // given
         String text = "\n\nint x = \"\\x\"";
+        String expectedMessage = "Illegal escape character '\\x' (line=3, column=11)";
 
         // then
         assertThatExceptionOfType(LexerException.class)
                 .isThrownBy(() -> tokenize(text))
-                .withMessage("Illegal escape character '\\x' (line=3, column=11)");
+                .withMessage(expectedMessage);
+    }
+
+    @Test
+    void should_throw_an_error_when_string_literal_length_is_exceeded() {
+        // given
+        String text = "\"" + "x".repeat(1025) + "\"";
+        String expectedMessage = "String literal length exceeded the limit of 1024 characters (line=1, column=1)";
+
+
+        // then
+        assertThatExceptionOfType(LexerException.class)
+                .isThrownBy(() -> tokenize(text))
+                .withMessage(expectedMessage);
     }
 
     @ParameterizedTest
