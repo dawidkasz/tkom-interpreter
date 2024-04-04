@@ -49,6 +49,18 @@ public class LexerTest {
         assertThat(tokens.get(4)).extracting(Token::tokenType).isEqualTo(TokenType.SEMICOLON);
     }
 
+    @Test
+    void should_not_allow_identifiers_longer_than_128_characters() {
+        // given
+        String tooLongIdentifier = "x".repeat(129);
+        String text = String.format("int %s;", tooLongIdentifier);
+
+        // then
+        assertThatExceptionOfType(LexerException.class)
+                .isThrownBy(() -> tokenize(text))
+                .withMessage("Identifier length limit of 128 characters exceeded (line=1, column=5)");
+    }
+
     @ParameterizedTest
     @MethodSource("provideKeywordsForKeywordMatchingTest")
     void should_match_keywords(String keywordName) {
@@ -107,7 +119,7 @@ public class LexerTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"0", "4", "2500", "1234567890"})
+    @CsvSource({"0", "4", "2500", "2147483647"})
     void should_match_int_literals(String intLiteral) {
         // when
         List<Token> tokens = tokenize(intLiteral);
@@ -117,6 +129,18 @@ public class LexerTest {
                 .first()
                 .matches(t -> t.tokenType().equals(TokenType.INT_LITERAL))
                 .matches(t -> t.value().equals(Integer.valueOf(intLiteral)));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"2147483648"})
+    void should_detect_overflow_in_number_literals(String numberLiteral) {
+        // given
+        String expectedMessage = "Overflow: number literal exceeded its maximum value (line=1, column=1)";
+
+        // then
+        assertThatExceptionOfType(LexerException.class)
+                .isThrownBy(() -> tokenize(numberLiteral))
+                .withMessage(expectedMessage);
     }
 
     @ParameterizedTest
@@ -145,6 +169,18 @@ public class LexerTest {
                 .matches(v -> new FloatComparator(1e-6f).compare((Float) v, Float.parseFloat(floatLiteral)) == 0);
     }
 
+    @Test
+    void should_throw_an_error_when_float_literal_doesnt_have_a_fractional_part_after_dot() {
+        // when
+        String text = "float x = 123.;";
+        String expectedMessage = "Missing fractional part in a float literal (line=1, column=11)";
+
+        // then
+        assertThatExceptionOfType(LexerException.class)
+                .isThrownBy(() -> tokenize(text))
+                .withMessage(expectedMessage);
+    }
+
     @ParameterizedTest
     @MethodSource("provideOperatorsForOperatorsMatchingTest")
     void should_match_operators(String operator) {
@@ -169,6 +205,26 @@ public class LexerTest {
         Stream<String> doubleOperatorStream = DOUBLE_SIGN_OPERATORS.keySet().stream();
 
         return Stream.concat(singleOperatorStream, doubleOperatorStream).map(Arguments::of);
+    }
+
+    @Test
+    void should_process_ambiguous_operators() {
+        // given
+        String text = "<<====>>===";
+
+        // when
+        List<Token> tokens = tokenize(text);
+
+        // then
+        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+                TokenType.LESS_THAN_OPERATOR,
+                TokenType.LESS_THAN_OR_EQUAL_OPERATOR,
+                TokenType.EQUAL_OPERATOR,
+                TokenType.ASSIGNMENT,
+                TokenType.GREATER_THAN_OPERATOR,
+                TokenType.GREATER_THAN_OR_EQUAL_OPERATOR,
+                TokenType.EQUAL_OPERATOR
+        );
     }
 
     @ParameterizedTest
