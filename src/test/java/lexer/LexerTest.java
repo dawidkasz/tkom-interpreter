@@ -90,8 +90,7 @@ public class LexerTest {
     void should_match_string_literals(String escapedString, String expectedValue) {
         // when
         List<Token> tokens = tokenize(escapedString);
-        System.out.println(escapedString);
-        System.out.println(tokens);
+
         // then
         assertThat(tokens)
                 .first()

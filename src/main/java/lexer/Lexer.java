@@ -12,10 +12,10 @@ import static lexer.TokenTypeMapper.SINGLE_SIGN_OPERATORS;
 public class Lexer {
     private static final int IDENTIFIER_LENGTH_LIMIT = 128;
     private static final int STRING_LITERAL_LENGTH_LIMIT = 1024;
+    private static final PositionedCharacter EOF = new PositionedCharacter('\uFFFF', null);
 
     private final CharacterProvider characterProvider;
     private PositionedCharacter currentCharacter;
-    private boolean isEndOfFile = false;
 
     public Lexer(CharacterProvider characterProvider) {
         this.characterProvider = characterProvider;
@@ -25,8 +25,8 @@ public class Lexer {
     public Token nextToken() {
         skipWhiteCharacters();
 
-        if (isEndOfFile) {
-            return Token.eof(currentCharacter.position());
+        if (currentCharacter == EOF) {
+            return Token.eof();
         }
 
         return processKeywordOrIdentifier()
@@ -37,7 +37,7 @@ public class Lexer {
     }
 
     private void skipWhiteCharacters() {
-        while (!isEndOfFile && Character.isWhitespace(currentCharacter.character())) {
+        while (Character.isWhitespace(currentCharacter.character())) {
             readNextCharacter();
         }
     }
@@ -51,8 +51,9 @@ public class Lexer {
         Position position = currentCharacter.position();
 
         while (
-            !isEndOfFile &&
-            (Character.isLetter(currentCharacter.character()) || Character.isDigit(currentCharacter.character()) || currentCharacter.character() == '_')
+            Character.isLetter(currentCharacter.character()) ||
+            Character.isDigit(currentCharacter.character()) ||
+            currentCharacter.character() == '_'
         ) {
             buffer.append(currentCharacter.character());
             if (buffer.length() > IDENTIFIER_LENGTH_LIMIT) {
@@ -81,7 +82,7 @@ public class Lexer {
 
         boolean escapeNextChar = false;
 
-        while (!isEndOfFile) {
+        while (currentCharacter.character() != '"' || escapeNextChar) {
             if (escapeNextChar) {
                 escapeNextChar = false;
                 buffer.append(escapeCharacterInStringLiteral(currentCharacter));
@@ -96,12 +97,9 @@ public class Lexer {
             }
 
             readNextCharacter();
-
-            if (currentCharacter.character() == '"' && !escapeNextChar) {
-                readNextCharacter();
-                break;
-            }
         }
+
+        readNextCharacter();
 
         return Optional.of(new Token(TokenType.STRING_LITERAL, position, buffer.toString()));
     }
@@ -121,25 +119,8 @@ public class Lexer {
             return Optional.empty();
         }
 
-        int decimalPart = 0;
         Position position = currentCharacter.position();
-
-        if (currentCharacter.character() == '0') {
-            readNextCharacter();
-
-            if (!isEndOfFile && Character.isDigit(currentCharacter.character())) {
-                throw new LexerException("Leading zeros in number literal", position);
-            }
-        } else {
-            while (!isEndOfFile && Character.isDigit(currentCharacter.character())) {
-                try {
-                    decimalPart = Math.addExact(Math.multiplyExact(decimalPart, 10), Character.getNumericValue(currentCharacter.character()));
-                } catch (ArithmeticException e) {
-                    throw new LexerException("Overflow: number literal exceeded its maximum value", position);
-                }
-                readNextCharacter();
-            }
-        }
+        int decimalPart = processDecimalNumberLiteralPart(position);
 
         if (currentCharacter.character() == '.') {
             readNextCharacter();
@@ -150,15 +131,39 @@ public class Lexer {
         return Optional.of(new Token(TokenType.INT_LITERAL, position, decimalPart));
     }
 
+    private int processDecimalNumberLiteralPart(Position literalBeginning) {
+        int decimalPart = 0;
+
+        if (currentCharacter.character() == '0') {
+            readNextCharacter();
+            if (Character.isDigit(currentCharacter.character())) {
+                throw new LexerException("Leading zeros in number literal", literalBeginning);
+            }
+
+            return decimalPart;
+        }
+
+        while (Character.isDigit(currentCharacter.character())) {
+            try {
+                decimalPart = Math.addExact(Math.multiplyExact(decimalPart, 10), Character.getNumericValue(currentCharacter.character()));
+            } catch (ArithmeticException e) {
+                throw new LexerException("Overflow: number literal exceeded its maximum value", literalBeginning);
+            }
+            readNextCharacter();
+        }
+
+        return decimalPart;
+    }
+
     private float processFractionalNumberLiteralPart(Position literalBeginning) {
-        if (isEndOfFile || !Character.isDigit(currentCharacter.character())) {
+        if (!Character.isDigit(currentCharacter.character())) {
             throw new LexerException("Missing fractional part in a float literal", literalBeginning);
         }
 
         float fraction = 0f;
         float base = 0.1f;
 
-        while (!isEndOfFile && Character.isDigit(currentCharacter.character())) {
+        while (Character.isDigit(currentCharacter.character())) {
             fraction = fraction + (float) Character.getNumericValue(currentCharacter.character()) * base;
             base *= 0.1f;
 
@@ -202,12 +207,7 @@ public class Lexer {
     }
 
     private void readNextCharacter() {
-        if (!characterProvider.hasNext()) {
-            isEndOfFile = true;
-            return;
-        }
-
-        currentCharacter = characterProvider.next();
+        currentCharacter = characterProvider.hasNext() ? characterProvider.next() : EOF;
     }
 
     private Optional<TokenType> mapValueToKeywordTokenType(String value) {

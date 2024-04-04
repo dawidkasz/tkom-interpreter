@@ -3,6 +3,7 @@ package lexer.characterprovider;
 import lexer.PositionedCharacter;
 import lexer.PositionTracker;
 
+import java.text.StringCharacterIterator;
 import java.util.NoSuchElementException;
 
 public class StringCharacterProvider implements CharacterProvider {
