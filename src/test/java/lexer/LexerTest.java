@@ -150,7 +150,7 @@ public class LexerTest {
     @CsvSource({"2147483648"})
     void should_detect_overflow_in_number_literals(String numberLiteral) {
         // given
-        String expectedMessage = "Overflow: number literal exceeded its maximum value (line=1, column=1)";
+        String expectedMessage = String.format("Overflow: number literal exceeded its maximum value of %s (line=1, column=1)", Integer.MAX_VALUE);
 
         // then
         assertThatExceptionOfType(LexerException.class)
@@ -162,7 +162,7 @@ public class LexerTest {
     @CsvSource({"00", "000", "03", "009", "00.0", "000.992", "003.5"})
     void should_throw_an_error_if_there_are_leading_zeros_in_a_number_literal(String numberLiteral) {
         // given
-        String expectedMessage = "Leading zeros in number literal (line=1, column=1)";
+        String expectedMessage = "Leading zero in number literal (line=1, column=1)";
 
         // then
         assertThatExceptionOfType(LexerException.class)

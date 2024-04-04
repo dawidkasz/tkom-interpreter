@@ -5,7 +5,7 @@ public class PositionTracker {
     private int currentColumn = 1;
     private Character previousChar = null;
 
-    public void updatePosition(Character nextChar) {
+    public void updatePosition(Character nextChar) {  // \r\n
         if (previousChar == null) {
             previousChar = nextChar;
             return;

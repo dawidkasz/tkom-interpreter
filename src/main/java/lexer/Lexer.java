@@ -55,11 +55,11 @@ public class Lexer {
             Character.isDigit(currentCharacter.character()) ||
             currentCharacter.character() == '_'
         ) {
-            buffer.append(currentCharacter.character());
-            if (buffer.length() > IDENTIFIER_LENGTH_LIMIT) {
+            if (buffer.length() == IDENTIFIER_LENGTH_LIMIT) {
                 throw new LexerException(String.format("Identifier length exceeded the limit of %s characters", IDENTIFIER_LENGTH_LIMIT), position);
             }
 
+            buffer.append(currentCharacter.character());
             readNextCharacter();
         }
 
@@ -80,20 +80,16 @@ public class Lexer {
 
         readNextCharacter();
 
-        boolean escapeNextChar = false;
-
-        while (currentCharacter.character() != '"' || escapeNextChar) {
-            if (escapeNextChar) {
-                escapeNextChar = false;
-                buffer.append(escapeCharacterInStringLiteral(currentCharacter));
-            } else if (currentCharacter.character() == '\\') {
-                escapeNextChar = true;
-            } else {
-                buffer.append(currentCharacter.character());
+        while (currentCharacter.character() != '"') {
+            if (buffer.length() == STRING_LITERAL_LENGTH_LIMIT) {
+                throw new LexerException(String.format("String literal length exceeded the limit of %s characters", STRING_LITERAL_LENGTH_LIMIT), position);
             }
 
-            if (buffer.length() > STRING_LITERAL_LENGTH_LIMIT) {
-                throw new LexerException(String.format("String literal length exceeded the limit of %s characters", STRING_LITERAL_LENGTH_LIMIT), position);
+            if (currentCharacter.character() == '\\') {
+                readNextCharacter();
+                buffer.append(mapEscapedCharacter(currentCharacter));
+            } else {
+                buffer.append(currentCharacter.character());
             }
 
             readNextCharacter();
@@ -104,7 +100,7 @@ public class Lexer {
         return Optional.of(new Token(TokenType.STRING_LITERAL, position, buffer.toString()));
     }
 
-    private Character escapeCharacterInStringLiteral(PositionedCharacter c) {
+    private Character mapEscapedCharacter(PositionedCharacter c) {
         return switch (c.character()) {
             case '\\' -> '\\';
             case '"' -> '"';
@@ -137,7 +133,7 @@ public class Lexer {
         if (currentCharacter.character() == '0') {
             readNextCharacter();
             if (Character.isDigit(currentCharacter.character())) {
-                throw new LexerException("Leading zeros in number literal", literalBeginning);
+                throw new LexerException("Leading zero in number literal", literalBeginning);
             }
 
             return decimalPart;
@@ -147,7 +143,7 @@ public class Lexer {
             try {
                 decimalPart = Math.addExact(Math.multiplyExact(decimalPart, 10), Character.getNumericValue(currentCharacter.character()));
             } catch (ArithmeticException e) {
-                throw new LexerException("Overflow: number literal exceeded its maximum value", literalBeginning);
+                throw LexerException.numberOverFlow(literalBeginning);
             }
             readNextCharacter();
         }
@@ -160,17 +156,21 @@ public class Lexer {
             throw new LexerException("Missing fractional part in a float literal", literalBeginning);
         }
 
-        float fraction = 0f;
-        float base = 0.1f;
+        int base = 0;
+        int decimalValue = 0;
 
         while (Character.isDigit(currentCharacter.character())) {
-            fraction = fraction + (float) Character.getNumericValue(currentCharacter.character()) * base;
-            base *= 0.1f;
+            try {
+                decimalValue = Math.addExact(Math.multiplyExact(decimalValue, 10), Character.getNumericValue(currentCharacter.character()));
+                base++;
+            } catch (ArithmeticException e) {
+                throw LexerException.numberOverFlow(literalBeginning);
+            }
 
             readNextCharacter();
         }
 
-        return fraction;
+        return decimalValue / (float) Math.pow(10, base);
     }
 
     private Optional<Token> processSpecialCharacter() {
@@ -217,6 +217,10 @@ public class Lexer {
     public static class LexerException extends RuntimeException {
         LexerException(String message, Position position) {
             super(String.format("%s (line=%s, column=%s)", message, position.lineNumber(), position.columnNumber()));
+        }
+
+        public static LexerException numberOverFlow(Position position) {
+            return new LexerException(String.format("Overflow: number literal exceeded its maximum value of %s", Integer.MAX_VALUE), position);
         }
     }
 }
