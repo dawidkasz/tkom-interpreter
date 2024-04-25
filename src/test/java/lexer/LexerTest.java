@@ -1,6 +1,6 @@
 package lexer;
 
-import static lexer.Lexer.LexerException;
+import static lexer.DefaultLexer.LexerException;
 
 import lexer.characterprovider.StringCharacterProvider;
 import org.assertj.core.util.FloatComparator;
@@ -532,7 +532,7 @@ public class LexerTest {
     @Test
     void should_return_eof_as_last_token() {
         // given
-        Lexer lexer = new Lexer(new StringCharacterProvider("\n x \n 123  \n "));
+        Lexer lexer = new DefaultLexer(new StringCharacterProvider("\n x \n 123  \n "));
 
         // when
         List<Token> tokens = List.of(lexer.nextToken(), lexer.nextToken(), lexer.nextToken(), lexer.nextToken());
@@ -544,7 +544,7 @@ public class LexerTest {
     }
 
     private List<Token> tokenize(String input) {
-        Lexer lexer = new Lexer(new StringCharacterProvider(input));
+        Lexer lexer = new DefaultLexer(new StringCharacterProvider(input));
 
         return Stream.generate(lexer::nextToken)
                 .takeWhile(t -> !t.tokenType().equals(TokenType.EOF))

@@ -82,7 +82,7 @@ public class LexerTest {
     }
 
     private List<Token> tokenize(String filePath) {
-        Lexer lexer = new Lexer(new FileCharacterProvider(filePath));
+        Lexer lexer = new DefaultLexer(new FileCharacterProvider(filePath));
 
         return Stream.generate(lexer::nextToken)
                 .takeWhile(t -> !t.tokenType().equals(TokenType.EOF))
