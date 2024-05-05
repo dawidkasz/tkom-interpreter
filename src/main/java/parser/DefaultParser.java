@@ -62,26 +62,17 @@ public class DefaultParser implements Parser {
         }
 
         TokenType type = token.type();
-
         consumeToken();
-        if (token.type() != TokenType.IDENTIFIER) {
-            throw new SyntaxError("Expected identifer");
-        }
-        var name = (String) token.value();
 
-        consumeToken();
-        if (token.type() != TokenType.LEFT_ROUND_BRACKET) {
-            throw new SyntaxError("Expected left parentheses");
-        }
+        Token t = expectToken(TokenType.IDENTIFIER, "Expected an identifier");
+        var name = (String) t.value();
 
-        consumeToken();
+        expectToken(TokenType.LEFT_ROUND_BRACKET, "Expected left parentheses");
+
         var params = parseParameters();
 
-        if (token.type() != TokenType.RIGHT_ROUND_BRACKET) {
-            throw new SyntaxError(String.format("Expected right parentheses, but received %s", token.type()));
-        }
+        expectToken(TokenType.RIGHT_ROUND_BRACKET, String.format("Expected right parentheses, but received %s", token.type()));
 
-        consumeToken();
         var block = parseStatementBlock();
 
         return Optional.of(new FunctionDefinition(type.name(), name, params, block));
@@ -98,8 +89,6 @@ public class DefaultParser implements Parser {
 
         parameters.add(parameter.get());
 
-        consumeToken();
-
         while (token.type() == TokenType.COMMA) {
             consumeToken();
             parameter = parseParameter();
@@ -107,7 +96,6 @@ public class DefaultParser implements Parser {
                 throw new SyntaxError("Expected parameter");
             }
             parameters.add(parameter.get());
-            consumeToken();
         }
 
         return parameters;
@@ -120,51 +108,43 @@ public class DefaultParser implements Parser {
             return Optional.empty();
         }
 
-        consumeToken();
-        if (token.type() != TokenType.IDENTIFIER) {
-            throw new SyntaxError("Expected identifier");
-        }
+        var identifier = expectToken(TokenType.IDENTIFIER, "Expected identifier");
 
-        var identifier = (String) token.value();
-
-        return Optional.of(new Parameter(type.get(), identifier));
+        return Optional.of(new Parameter(type.get(), (String) identifier.value()));
     }
 
     // type = simpleType | parametrizedType;
     private Optional<String> parseType() {
         if (isSimpleType(token.type())) {
-            return Optional.of(token.type().name());
+            var typeName = token.type().name();
+            consumeToken();
+            return Optional.of(typeName);
         }
 
         if (isCollectionType(token.type())) {
             var type = token.type();
 
             consumeToken();
-            if (token.type() != TokenType.LEFT_SQUARE_BRACKET) {
-                throw new SyntaxError("Expected left square bracket");
-            }
 
-            consumeToken();
+            expectToken(TokenType.LEFT_SQUARE_BRACKET, "Expected left square bracket");
+
             if (!isSimpleType(token.type())) {
                 throw new SyntaxError("Expected simple type");
             }
             var t1 = token.type().name();
 
             consumeToken();
-            if (token.type() != TokenType.COMMA) {
-                throw new SyntaxError("Expected comma");
-            }
 
-            consumeToken();
+            expectToken(TokenType.COMMA, "Expected comma");
+
             if (!isSimpleType(token.type())) {
                 throw new SyntaxError("Expected simple type");
             }
             var t2 = token.type().name();
 
             consumeToken();
-            if (token.type() != TokenType.RIGHT_SQUARE_BRACKET) {
-                throw new SyntaxError("Expected right square bracket");
-            }
+
+            expectToken(TokenType.RIGHT_SQUARE_BRACKET, "Expected right square bracket");
 
             return Optional.of(String.format("%s[%s %s]", type, t1, t2));
         }
@@ -174,11 +154,7 @@ public class DefaultParser implements Parser {
 
     // statementBlock = "{" {statement} "}";
     private List<Statement> parseStatementBlock() {
-        if (token.type() != TokenType.LEFT_CURLY_BRACKET) {
-            throw new SyntaxError("Expected left curly bracket");
-        }
-
-        consumeToken();
+        expectToken(TokenType.LEFT_CURLY_BRACKET, "Expected left curly bracket");
 
         List<Statement> statements = new ArrayList<>();
 
@@ -188,12 +164,7 @@ public class DefaultParser implements Parser {
             statement = parseStatement();
         }
 
-        if (token.type() != TokenType.RIGHT_CURLY_BRACKET) {
-            System.out.println(token);
-            throw new SyntaxError("Expected right curly bracket");
-        }
-
-        consumeToken();
+        expectToken(TokenType.RIGHT_CURLY_BRACKET, "Expected right curly bracket");
 
         return statements;
     }
@@ -294,7 +265,7 @@ public class DefaultParser implements Parser {
 
         var leftLogicFactor = left.get();
 
-        boolean plus = false;
+        boolean plus;
         while (token.type() == TokenType.PLUS_OPERATOR || token.type() == TokenType.MINUS_OPERATOR) {
             plus = token.type() == TokenType.PLUS_OPERATOR;
             consumeToken();
@@ -407,11 +378,7 @@ public class DefaultParser implements Parser {
                 throw new SyntaxError("Missing expression inside brackets");
             }
 
-            if (token.type() != TokenType.RIGHT_ROUND_BRACKET) {
-                throw new SyntaxError("Missing right round bracket");
-            }
-
-            consumeToken();
+            expectToken(TokenType.RIGHT_ROUND_BRACKET, "Missing right round bracket");
 
             return expression;
         }
@@ -435,12 +402,12 @@ public class DefaultParser implements Parser {
         }
 
         if (token.type() == TokenType.IDENTIFIER) {
-            var identifier = token;
-            consumeToken();
-            if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
-                consumeToken();
-
-            }
+//            var identifier = token;
+//            consumeToken();
+//            if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
+//                consumeToken();
+//
+//            }
         }
 
         return Optional.empty();
@@ -475,6 +442,16 @@ public class DefaultParser implements Parser {
 
     private void consumeToken() {
         this.token = lexer.nextToken();
+    }
+
+    private Token expectToken(TokenType expectedType, String errorMessage) {
+        if (token.type() != expectedType) {
+            throw new SyntaxError(errorMessage);
+        }
+
+        var currentToken = token;
+        consumeToken();
+        return currentToken;
     }
 
     private boolean isSimpleType(TokenType tokenType) {
