@@ -21,6 +21,7 @@ public class AstPrinter implements Visitor {
     private static final int INDENTATION_LEVEL = 2;
 
     private int indentation = 0;
+    private boolean nextPrintWithoutIndentation = false;
 
     @Override
     public void visit(Program program) {
@@ -44,7 +45,7 @@ public class AstPrinter implements Visitor {
             withIndentation(() ->
                 def.parameters().forEach(param -> {
                     print("\n");
-                    print(String.format("Param [name=%s type=%s]", param.name(), param.type()));
+                    print(String.format("Param(name=%s type=%s)", param.name(), param.type()));
                 })
             );
 
@@ -75,10 +76,10 @@ public class AstPrinter implements Visitor {
 
     @Override
     public void visit(WhileStatement whileStatement) {
-        print("While [\n");
+        print("While(\n");
         withIndentation(() -> {
-            print("condition=\n");
-            withIndentation(() -> whileStatement.condition().accept(this));
+            print("condition=");
+            withoutIndentationForNextLine(() -> whileStatement.condition().accept(this));
             print("\n");
             print("body=[");
             withIndentation(() ->
@@ -100,13 +101,13 @@ public class AstPrinter implements Visitor {
 
     @Override
     public void visit(ReturnStatement returnStatement) {
-        print("Return [\n");
+        print("Return(\n");
         withIndentation(() -> {
-            print("value=\n");
-            withIndentation(() -> returnStatement.expression().accept(this));
+            print("value=");
+            withoutIndentationForNextLine(() ->  returnStatement.expression().accept(this));
             print("\n");
         });
-        print("]");
+        print(")");
     }
 
     @Override
@@ -146,7 +147,7 @@ public class AstPrinter implements Visitor {
 
     @Override
     public void visit(IntLiteral intLiteral) {
-        print(String.format("LITERAL[%s]", intLiteral.value()));
+        print(String.format("Literal(value=%s)", intLiteral.value()));
     }
 
     @Override
@@ -181,14 +182,14 @@ public class AstPrinter implements Visitor {
 
     @Override
     public void visit(OrExpression orExpression) {
-        print("OR [\n");
+        print("Or(\n");
         withIndentation(() -> {
             orExpression.left().accept(this);
             print("\n");
             orExpression.right().accept(this);
             print("\n");
         });
-        print("]");
+        print(")");
     }
 
     private void withIndentation(Runnable func) {
@@ -197,7 +198,14 @@ public class AstPrinter implements Visitor {
         indentation -= INDENTATION_LEVEL;
     }
 
+    private void withoutIndentationForNextLine(Runnable func) {
+        nextPrintWithoutIndentation = true;
+        func.run();
+    }
+
     private void print(String value) {
-        System.out.print(" ".repeat(indentation) + value);
+        String result = nextPrintWithoutIndentation ? value : " ".repeat(indentation) + value ;
+        nextPrintWithoutIndentation = false;
+        System.out.print(result);
     }
 }
