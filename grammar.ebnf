@@ -90,7 +90,8 @@ multiplicativeOperator = "*" |
 identifier = (letter | "_") {letter | digit | "_"};
 
 literal = stringLiteral |
-          numberLiteral |
+          intLiteral |
+          floatLiteral |
           dictionaryLiteral |
           "null";
 
@@ -102,6 +103,9 @@ nonZeroDigit = "1" .. "9";
 
 stringLiteral = "\"" .. "\"";
 
-numberLiteral = nonZeroDigit {digit} ["." digit {digit}];
+intLiteral = "0" | nonZeroDigit {digit};
+
+floatLiteral = "0." digit {digit} |
+               nonZeroDigit {digit} "." digit {digit};
 
 dictionaryLiteral = "{" [expression ":" expression {"," expression ":" expression }] "}";
