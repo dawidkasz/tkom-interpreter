@@ -27,9 +27,9 @@ variableDeclaration = type identifier ["=" expression] ";";
 assignment = (identifier "=" expression ";") |
              (identifier "[" expression "]" "=" expression ";");
 
-functionCall = functionCallAsExpression ";";
+functionCall = identifier "(" arguments ")";
 
-argumentList = [expression, {"," expression}];
+arguments = [expression, {"," expression}];
 
 returnStatement = "return" expression ";";
 
@@ -47,15 +47,14 @@ nullableSingleExpression = negatedSingleExpression ["?"];
 
 negatedSingleExpression = ["!" | "-"] castedExpression;
 
-castedExpression = simpleExpression ["as" simpleType];
+castedExpression = dictKeyExpression ["as" simpleType];
+
+dictKeyExpression = simpleExpression ["[" expression "]"];
 
 simpleExpression = identifier |
                    literal |
                    "(" expression ")" |
-                   functionCallAsExpression |
-                   identifier "[" expression "]";
-
-functionCallAsExpression = identifier "(" argumentList ")";
+                   functionCall;
 
 functionReturnType = type | "void";
 

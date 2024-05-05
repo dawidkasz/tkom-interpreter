@@ -34,6 +34,11 @@ public class Interpreter {
             return (2 < 3) ? || "3" as int < 4 || !(6 < 5)
         }
         
+        int get5() {
+            return f1(3, 4, xyz() + 5) || d1[3] == "32" && d1[x(2, 4)] == f5(1,1)[4]
+        }
+        
+        
         
         """;
 

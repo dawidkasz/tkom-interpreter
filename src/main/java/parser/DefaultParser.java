@@ -1,10 +1,12 @@
 package parser;
 
+import ast.FunctionCall;
 import ast.FunctionDefinition;
 import ast.Parameter;
 import ast.Program;
 import ast.expression.AndExpression;
 import ast.expression.CastedExpression;
+import ast.expression.DictKeyValue;
 import ast.expression.DictLiteral;
 import ast.expression.DivideExpression;
 import ast.expression.Expression;
@@ -19,6 +21,7 @@ import ast.expression.NullableExpression;
 import ast.expression.OrExpression;
 import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
+import ast.expression.VariableValue;
 import ast.statement.ReturnStatement;
 import ast.statement.Statement;
 import ast.statement.WhileStatement;
@@ -134,7 +137,7 @@ public class DefaultParser implements Parser {
             if (!isSimpleType(token.type())) {
                 throw new SyntaxError("Expected simple type");
             }
-            var t1 = token.type().name();
+            var paramType1 = token.type().name();
 
             consumeToken();
 
@@ -143,13 +146,13 @@ public class DefaultParser implements Parser {
             if (!isSimpleType(token.type())) {
                 throw new SyntaxError("Expected simple type");
             }
-            var t2 = token.type().name();
+            var paramType2 = token.type().name();
 
             consumeToken();
 
             expectToken(TokenType.RIGHT_SQUARE_BRACKET, "Expected right square bracket");
 
-            return Optional.of(String.format("%s[%s %s]", type, t1, t2));
+            return Optional.of(String.format("%s[%s %s]", type, paramType1, paramType2));
         }
 
         return Optional.empty();
@@ -376,7 +379,7 @@ public class DefaultParser implements Parser {
 
     // castedExpression = simpleExpression ["as" simpleType];
     private Optional<Expression> parseCastedExpression() {
-        var expression = parseSimpleExpression();
+        var expression = parseDictKeyExpression();
         if (expression.isEmpty()) {
             return expression;
         }
@@ -395,7 +398,30 @@ public class DefaultParser implements Parser {
         return expression;
     }
 
-    // simpleExpression = identifier | literal | "(" expression ")" | functionCallAsExpression | identifier "[" expression "]";
+    // dictKeyExpression = simpleExpression ["[" expression "]"];
+    private Optional<Expression> parseDictKeyExpression() {
+        var expression = parseSimpleExpression();
+        if (expression.isEmpty()) {
+            return expression;
+        }
+
+        if (token.type() == TokenType.LEFT_SQUARE_BRACKET) {
+            consumeToken();
+
+            Optional<Expression> dictKey = parseExpression();
+            if (dictKey.isEmpty()) {
+                throw new SyntaxError("Missing dict key");
+            }
+
+            expectToken(TokenType.RIGHT_SQUARE_BRACKET, "Missing right square bracket in dict key retrieval");
+
+            return Optional.of(new DictKeyValue(expression.get(), dictKey.get()));
+        }
+
+        return expression;
+    }
+
+    // simpleExpression = identifier | literal | "(" expression ")" | functionCallAsExpression;
     private Optional<Expression> parseSimpleExpression() {
         if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
             consumeToken();
@@ -430,6 +456,21 @@ public class DefaultParser implements Parser {
 
         if (token.type() == TokenType.LEFT_CURLY_BRACKET) {
             return Optional.of(parseDictLiteral());
+        }
+
+        if (token.type() == TokenType.IDENTIFIER) {
+            var identifierName = (String) token.value();
+            consumeToken();
+
+            if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
+                consumeToken();
+                List<Expression> arguments = parseArguments();
+                expectToken(TokenType.RIGHT_ROUND_BRACKET, "Missing right round bracket in function call");
+
+                return Optional.of(new FunctionCall(identifierName, arguments));
+            }
+
+            return Optional.of(new VariableValue(identifierName));
         }
 
         return Optional.empty();
@@ -473,11 +514,11 @@ public class DefaultParser implements Parser {
             throw new SyntaxError("Missing value in dict literal");
         }
 
-        return new AbstractMap.SimpleImmutableEntry<Expression, Expression>(key.get(), value.get());
+        return new AbstractMap.SimpleImmutableEntry<>(key.get(), value.get());
     }
 
-    // argumentList = [expression, {"," expression}];
-    private List<Expression> parseArgumentList() {
+    // arguments = [expression, {"," expression}];
+    private List<Expression> parseArguments() {
         List<Expression> arguments = new ArrayList<>();
 
         var argument = parseExpression();
@@ -487,8 +528,6 @@ public class DefaultParser implements Parser {
 
         arguments.add(argument.get());
 
-        consumeToken();
-
         while (token.type() == TokenType.COMMA) {
             consumeToken();
             argument = parseExpression();
@@ -496,11 +535,9 @@ public class DefaultParser implements Parser {
                 throw new SyntaxError("Expected argument after comma");
             }
             arguments.add(argument.get());
-            consumeToken();
         }
 
         return arguments;
-
     }
 
     private void consumeToken() {
