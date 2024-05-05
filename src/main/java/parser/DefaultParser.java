@@ -194,6 +194,8 @@ public class DefaultParser implements Parser {
             throw new SyntaxError("Missing return expression");
         }
 
+        expectToken(TokenType.SEMICOLON, "Missing semicolon");
+
         return Optional.of(new ReturnStatement(returnExpression.get()));
     }
 
