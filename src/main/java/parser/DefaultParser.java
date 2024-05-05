@@ -17,6 +17,7 @@ import ast.expression.MinusExpression;
 import ast.expression.ModuloExpression;
 import ast.expression.MultiplyExpression;
 import ast.expression.NegatedExpression;
+import ast.expression.Null;
 import ast.expression.NullableExpression;
 import ast.expression.OrExpression;
 import ast.expression.PlusExpression;
@@ -454,6 +455,11 @@ public class DefaultParser implements Parser {
             String value = (String) token.value();
             consumeToken();
             return Optional.of(new StringLiteral(value));
+        }
+
+        if (token.type() == TokenType.NULL_KEYWORD) {
+            consumeToken();
+            return Optional.of(Null.getInstance());
         }
 
         if (token.type() == TokenType.LEFT_CURLY_BRACKET) {

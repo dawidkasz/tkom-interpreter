@@ -19,7 +19,7 @@ public class Interpreter {
             while (3 || 2 && 2) {
                return 5;
             }
-            return 1;
+            return null;
         }
         
         int get2() {
@@ -37,9 +37,6 @@ public class Interpreter {
         int get5() {
             return f1(3, 4, xyz() + 5) || d1[3] == "32" && d1[x(2, 4)] == f5(1,1)[4];
         }
-        
-        
-        
         """;
 
         var parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input)));
