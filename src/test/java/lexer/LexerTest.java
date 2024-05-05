@@ -34,19 +34,19 @@ public class LexerTest {
         // then
         assertThat(tokens).hasSize(5);
 
-        assertThat(tokens.get(0)).extracting(Token::tokenType).isEqualTo(TokenType.INT_KEYWORD);
+        assertThat(tokens.get(0)).extracting(Token::type).isEqualTo(TokenType.INT_KEYWORD);
 
         assertThat(tokens.get(1))
-                .matches(t -> t.tokenType().equals(TokenType.IDENTIFIER))
+                .matches(t -> t.type().equals(TokenType.IDENTIFIER))
                 .matches(t -> t.value().equals(variableName));
 
-        assertThat(tokens.get(2)).extracting(Token::tokenType).isEqualTo(TokenType.ASSIGNMENT);
+        assertThat(tokens.get(2)).extracting(Token::type).isEqualTo(TokenType.ASSIGNMENT);
 
         assertThat(tokens.get(3))
-                .matches(t -> t.tokenType().equals(TokenType.INT_LITERAL))
+                .matches(t -> t.type().equals(TokenType.INT_LITERAL))
                 .matches(t -> t.value().equals(123));
 
-        assertThat(tokens.get(4)).extracting(Token::tokenType).isEqualTo(TokenType.SEMICOLON);
+        assertThat(tokens.get(4)).extracting(Token::type).isEqualTo(TokenType.SEMICOLON);
     }
 
     @Test
@@ -75,7 +75,7 @@ public class LexerTest {
 
         assertThat(tokens)
                 .first()
-                .matches(t -> t.tokenType().equals(KEYWORDS.get(keywordName)))
+                .matches(t -> t.type().equals(KEYWORDS.get(keywordName)))
                 .matches(t -> t.value().equals(keywordName))
                 .extracting(Token::position)
                 .matches(p -> p.lineNumber() == 3 && p.columnNumber() == 3);
@@ -94,7 +94,7 @@ public class LexerTest {
         // then
         assertThat(tokens)
                 .first()
-                .matches(t -> t.tokenType().equals(TokenType.STRING_LITERAL))
+                .matches(t -> t.type().equals(TokenType.STRING_LITERAL))
                 .matches(t -> t.value().equals(expectedValue));
     }
 
@@ -142,7 +142,7 @@ public class LexerTest {
         // then
         assertThat(tokens)
                 .first()
-                .matches(t -> t.tokenType().equals(TokenType.INT_LITERAL))
+                .matches(t -> t.type().equals(TokenType.INT_LITERAL))
                 .matches(t -> t.value().equals(Integer.valueOf(intLiteral)));
     }
 
@@ -179,7 +179,7 @@ public class LexerTest {
         // then
         assertThat(tokens)
                 .first()
-                .matches(t -> t.tokenType().equals(TokenType.FLOAT_LITERAL))
+                .matches(t -> t.type().equals(TokenType.FLOAT_LITERAL))
                 .extracting(Token::value)
                 .matches(v -> new FloatComparator(1e-6f).compare((Float) v, Float.parseFloat(floatLiteral)) == 0);
     }
@@ -211,7 +211,7 @@ public class LexerTest {
 
         assertThat(tokens)
                 .first()
-                .matches(t -> t.tokenType().equals(expectedTokenType))
+                .matches(t -> t.type().equals(expectedTokenType))
                 .matches(t -> t.value().equals(operator));
     }
 
@@ -231,7 +231,7 @@ public class LexerTest {
         List<Token> tokens = tokenize(text);
 
         // then
-        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+        assertThat(tokens).extracting(Token::type).containsExactly(
                 TokenType.LESS_THAN_OPERATOR,
                 TokenType.LESS_THAN_OR_EQUAL_OPERATOR,
                 TokenType.EQUAL_OPERATOR,
@@ -286,7 +286,7 @@ public class LexerTest {
 
         // then
         assertThat(tokens)
-                .extracting(Token::tokenType)
+                .extracting(Token::type)
                 .containsExactly(TokenType.INT_KEYWORD, TokenType.IDENTIFIER, TokenType.ASSIGNMENT, TokenType.INT_LITERAL, TokenType.SEMICOLON);
 
         assertThat(tokens)
@@ -313,7 +313,7 @@ public class LexerTest {
         List<Token> tokens = tokenize(text);
 
         // then
-        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+        assertThat(tokens).extracting(Token::type).containsExactly(
                 TokenType.INT_KEYWORD,
                 TokenType.IDENTIFIER,
                 TokenType.ASSIGNMENT,
@@ -336,7 +336,7 @@ public class LexerTest {
         );
 
         assertThat(tokens.get(13))
-                .matches(t -> t.tokenType().equals(TokenType.INT_LITERAL))
+                .matches(t -> t.type().equals(TokenType.INT_LITERAL))
                 .matches(t -> t.value().equals(24))
                 .matches(t -> t.position().equals(new Position(1, 27)));
     }
@@ -350,7 +350,7 @@ public class LexerTest {
         List<Token> tokens = tokenize(text);
 
         // then
-        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+        assertThat(tokens).extracting(Token::type).containsExactly(
                 TokenType.DICT_KEYWORD,
                 TokenType.LEFT_SQUARE_BRACKET,
                 TokenType.INT_KEYWORD,
@@ -368,7 +368,7 @@ public class LexerTest {
         );
 
         assertThat(tokens.get(11))
-                .matches(t -> t.tokenType().equals(TokenType.STRING_LITERAL))
+                .matches(t -> t.type().equals(TokenType.STRING_LITERAL))
                 .matches(t -> t.value().equals("a\"b"))
                 .matches(t -> t.position().equals(new Position(1, 29)));
     }
@@ -386,7 +386,7 @@ public class LexerTest {
         List<Token> tokens = tokenize(text );
 
         // then
-        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+        assertThat(tokens).extracting(Token::type).containsExactly(
                 TokenType.IF_KEYWORD,
                 TokenType.LEFT_ROUND_BRACKET,
                 TokenType.IDENTIFIER,
@@ -415,7 +415,7 @@ public class LexerTest {
         );
 
         assertThat(tokens.get(17))
-                .matches(t -> t.tokenType().equals(TokenType.IDENTIFIER))
+                .matches(t -> t.type().equals(TokenType.IDENTIFIER))
                 .matches(t -> t.value().equals("print"))
                 .matches(t -> t.position().equals(new Position(2, 5)));
 
@@ -435,7 +435,7 @@ public class LexerTest {
         List<Token> tokens = tokenize(text);
 
         // then
-        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+        assertThat(tokens).extracting(Token::type).containsExactly(
                 TokenType.WHILE_KEYWORD,
                 TokenType.LEFT_ROUND_BRACKET,
                 TokenType.IDENTIFIER,
@@ -474,7 +474,7 @@ public class LexerTest {
         List<Token> tokens = tokenize(text);
 
         // then
-        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+        assertThat(tokens).extracting(Token::type).containsExactly(
                 TokenType.FOREACH_KEYWORD,
                 TokenType.LEFT_ROUND_BRACKET,
                 TokenType.INT_KEYWORD,
@@ -509,7 +509,7 @@ public class LexerTest {
         List<Token> tokens = tokenize(text);
 
         // then
-        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+        assertThat(tokens).extracting(Token::type).containsExactly(
                 TokenType.VOID_KEYWORD,
                 TokenType.IDENTIFIER,
                 TokenType.LEFT_ROUND_BRACKET,
@@ -539,7 +539,7 @@ public class LexerTest {
 
         // then
         assertThat(tokens)
-                .extracting(Token::tokenType)
+                .extracting(Token::type)
                 .containsExactly(TokenType.IDENTIFIER, TokenType.INT_LITERAL, TokenType.EOF, TokenType.EOF);
     }
 
@@ -547,7 +547,7 @@ public class LexerTest {
         Lexer lexer = new DefaultLexer(new StringCharacterProvider(input));
 
         return Stream.generate(lexer::nextToken)
-                .takeWhile(t -> !t.tokenType().equals(TokenType.EOF))
+                .takeWhile(t -> !t.type().equals(TokenType.EOF))
                 .collect(Collectors.toList());
     }
 }

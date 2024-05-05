@@ -29,7 +29,7 @@ assignment = (identifier "=" expression ";") |
 
 functionCall = functionCallAsExpression ";";
 
-argumentList = "(" [expression, {"," expression}] ")";
+argumentList = [expression, {"," expression}];
 
 returnStatement = "return" expression ";";
 
@@ -55,7 +55,7 @@ singleExpression = identifier |
                    functionCallAsExpression |
                    identifier "[" expression "]";
 
-functionCallAsExpression = identifier argumentList;
+functionCallAsExpression = identifier "(" argumentList ")";
 
 functionReturnType = type | "void";
 
