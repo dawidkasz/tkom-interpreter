@@ -10,16 +10,25 @@ import static lexer.TokenTypeMapper.SIGNS_THAT_MIGHT_LEAD_TO_DOUBLE_SIGN_OPERATO
 import static lexer.TokenTypeMapper.SINGLE_SIGN_OPERATORS;
 
 public class DefaultLexer implements Lexer {
-    private static final int IDENTIFIER_LENGTH_LIMIT = 128;
-    private static final int STRING_LITERAL_LENGTH_LIMIT = 1024;
+    private static final int DEFAULT_IDENTIFIER_LENGTH_LIMIT = 128;
+    private static final int DEFAULT_STRING_LITERAL_LENGTH_LIMIT = 1024;
     private static final PositionedCharacter EOF = new PositionedCharacter('\uFFFF', null);
 
     private final CharacterProvider characterProvider;
+    private final int identifierLengthLimit;
+    private final int stringLiteralLengthLimit;
+
     private PositionedCharacter currentCharacter;
 
-    public DefaultLexer(CharacterProvider characterProvider) {
+    public DefaultLexer(CharacterProvider characterProvider, int identifierLengthLimit, int stringLiteralLengthLimit) {
         this.characterProvider = characterProvider;
+        this.identifierLengthLimit = identifierLengthLimit;
+        this.stringLiteralLengthLimit = stringLiteralLengthLimit;
         readNextCharacter();
+    }
+
+    public DefaultLexer(CharacterProvider characterProvider) {
+        this(characterProvider, DEFAULT_IDENTIFIER_LENGTH_LIMIT, DEFAULT_STRING_LITERAL_LENGTH_LIMIT);
     }
 
     @Override
@@ -56,8 +65,8 @@ public class DefaultLexer implements Lexer {
             Character.isDigit(currentCharacter.character()) ||
             currentCharacter.character() == '_'
         ) {
-            if (buffer.length() == IDENTIFIER_LENGTH_LIMIT) {
-                throw new LexerException(String.format("Identifier length exceeded the limit of %s characters", IDENTIFIER_LENGTH_LIMIT), position);
+            if (buffer.length() == identifierLengthLimit) {
+                throw new LexerException(String.format("Identifier length exceeded the limit of %s characters", identifierLengthLimit), position);
             }
 
             buffer.append(currentCharacter.character());
@@ -82,8 +91,8 @@ public class DefaultLexer implements Lexer {
         readNextCharacter();
 
         while (currentCharacter.character() != '"') {
-            if (buffer.length() == STRING_LITERAL_LENGTH_LIMIT) {
-                throw new LexerException(String.format("String literal length exceeded the limit of %s characters", STRING_LITERAL_LENGTH_LIMIT), position);
+            if (buffer.length() == stringLiteralLengthLimit) {
+                throw new LexerException(String.format("String literal length exceeded the limit of %s characters", stringLiteralLengthLimit), position);
             }
 
             if (currentCharacter.character() == '\\') {
