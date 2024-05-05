@@ -1,4 +1,6 @@
 package ast.statement;
 
-public interface Statement {
+import ast.Visitable;
+
+public interface Statement extends Visitable {
 }

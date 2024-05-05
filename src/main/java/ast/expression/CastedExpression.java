@@ -1,16 +1,10 @@
 package ast.expression;
 
-public class CastedExpression implements Expression {
-    private final Expression expression;
-    private final String asType;
+import ast.Visitor;
 
-    public CastedExpression(Expression expression, String asType) {
-        this.expression = expression;
-        this.asType = asType;
-    }
-
+public record CastedExpression(Expression expression, String asType) implements Expression {
     @Override
-    public String toString() {
-        return String.format("[%s as %s]", expression, asType);
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 }

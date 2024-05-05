@@ -1,16 +1,11 @@
 package ast.statement;
 
+import ast.Visitor;
 import ast.expression.Expression;
 
-public class ReturnStatement implements Statement {
-    private final Expression expression;
-
-    public ReturnStatement(Expression expression) {
-        this.expression = expression;
-    }
-
+public record ReturnStatement(Expression expression) implements Statement {
     @Override
-    public String toString() {
-        return String.format("return %s", expression);
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 }

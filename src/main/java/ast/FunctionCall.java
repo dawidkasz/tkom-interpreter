@@ -22,4 +22,9 @@ public class FunctionCall implements Statement, Expression {
 
         return String.format("%s(%s)", functionName, String.join(", ", args));
     }
+
+    @Override
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
+    }
 }

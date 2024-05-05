@@ -1,14 +1,10 @@
 package ast.expression;
 
-public class IntLiteral implements Expression {
-    private final int value;
+import ast.Visitor;
 
-    public IntLiteral(int value) {
-        this.value = value;
-    }
-
+public record IntLiteral(int value) implements Expression {
     @Override
-    public String toString() {
-        return String.valueOf(value);
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 }

@@ -1,16 +1,10 @@
 package ast.expression;
 
-public class DictKeyValue implements Expression {
-    private final Expression dict;
-    private final Expression key;
+import ast.Visitor;
 
-    public DictKeyValue(Expression dict, Expression key) {
-        this.dict = dict;
-        this.key = key;
-    }
-
+public record DictKeyValue(Expression dict, Expression key) implements Expression {
     @Override
-    public String toString() {
-        return String.format("%s[%s]", dict, key);
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 }

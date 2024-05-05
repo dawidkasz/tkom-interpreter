@@ -1,16 +1,10 @@
 package ast.expression;
 
-public class AndExpression implements Expression {
-    private final Expression left;
-    private final Expression right;
+import ast.Visitor;
 
-    public AndExpression(Expression left, Expression right) {
-        this.left = left;
-        this.right = right;
-    }
-
+public record AndExpression(Expression left, Expression right) implements Expression {
     @Override
-    public String toString() {
-        return String.format("(%s && %s)", left, right);
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 }

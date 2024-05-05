@@ -1,5 +1,7 @@
 package ast.expression;
 
+import ast.Visitor;
+
 public class ModuloExpression implements Expression {
     private final Expression left;
     private final Expression right;
@@ -12,5 +14,10 @@ public class ModuloExpression implements Expression {
     @Override
     public String toString() {
         return String.format("(%s %s %s)", left, "%", right);
+    }
+
+    @Override
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 }

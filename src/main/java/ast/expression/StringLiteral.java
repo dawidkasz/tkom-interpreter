@@ -1,5 +1,7 @@
 package ast.expression;
 
+import ast.Visitor;
+
 public class StringLiteral implements Expression {
     private final String value;
 
@@ -10,5 +12,10 @@ public class StringLiteral implements Expression {
     @Override
     public String toString() {
         return String.format("\"%s\"", value);
+    }
+
+    @Override
+    public void accept(Visitor visitor) {
+
     }
 }

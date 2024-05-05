@@ -1,3 +1,4 @@
+import ast.AstPrinter;
 import lexer.DefaultLexer;
 import lexer.characterprovider.StringCharacterProvider;
 import parser.DefaultParser;
@@ -39,9 +40,22 @@ public class Interpreter {
         }
         """;
 
-        var parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input)));
+        String input2 = """
+        int fun1(int x, float y) {
+            while (3 || 4) {
+                return 2;
+            }
+        
+            return 1 || 2;
+        }  
+        """;
+
+        var parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input2)));
 
         var program = parser.parseProgram();
-        System.out.append(program.toString());
+//        System.out.append(program.toString());
+
+        var printer = new AstPrinter();
+        printer.visit(program);
     }
 }

@@ -1,23 +1,13 @@
 package ast.statement;
 
+import ast.Visitor;
 import ast.expression.Expression;
 
 import java.util.List;
 
-public class WhileStatement implements Statement {
-    private final Expression expression;
-    private final List<Statement> block;
-
-    public WhileStatement(Expression expression, List<Statement> block) {
-        this.expression = expression;
-        this.block = block;
-    }
-
+public record WhileStatement(Expression condition, List<Statement> statementBlock) implements Statement {
     @Override
-    public String toString() {
-        var statements = new StringBuilder();
-        block.forEach(s -> statements.append(s.toString()));
-
-        return String.format("while %s { \n %s \n }", expression, statements);
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 }

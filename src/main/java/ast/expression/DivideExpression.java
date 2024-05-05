@@ -1,16 +1,10 @@
 package ast.expression;
 
-public class DivideExpression implements Expression {
-    private final Expression left;
-    private final Expression right;
+import ast.Visitor;
 
-    public DivideExpression(Expression left, Expression right) {
-        this.left = left;
-        this.right = right;
-    }
-
+public record DivideExpression(Expression left, Expression right) implements Expression {
     @Override
-    public String toString() {
-        return String.format("(%s / %s)", left, right);
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 }

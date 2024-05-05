@@ -55,7 +55,7 @@ public class DefaultParser implements Parser {
 
         var fun = this.parseFunctionDefinition();
         while (fun.isPresent()) {
-            functions.put(fun.get().getName(), fun.get());
+            functions.put(fun.get().name(), fun.get());
             fun = this.parseFunctionDefinition();
         }
 
@@ -108,7 +108,7 @@ public class DefaultParser implements Parser {
         return parameters;
     }
 
-    // parameter = type identifier;
+    // parameter = returnType identifier;
     private Optional<Parameter> parseParameter() {
         var type = parseType();
         if (type.isEmpty()) {
@@ -120,7 +120,7 @@ public class DefaultParser implements Parser {
         return Optional.of(new Parameter(type.get(), (String) identifier.value()));
     }
 
-    // type = simpleType | parametrizedType;
+    // returnType = simpleType | parametrizedType;
     private Optional<String> parseType() {
         if (isSimpleType(token.type())) {
             var typeName = token.type().name();
@@ -136,7 +136,7 @@ public class DefaultParser implements Parser {
             expectToken(TokenType.LEFT_SQUARE_BRACKET, "Expected left square bracket");
 
             if (!isSimpleType(token.type())) {
-                throw new SyntaxError("Expected simple type");
+                throw new SyntaxError("Expected simple returnType");
             }
             var paramType1 = token.type().name();
 
@@ -145,7 +145,7 @@ public class DefaultParser implements Parser {
             expectToken(TokenType.COMMA, "Expected comma");
 
             if (!isSimpleType(token.type())) {
-                throw new SyntaxError("Expected simple type");
+                throw new SyntaxError("Expected simple returnType");
             }
             var paramType2 = token.type().name();
 
@@ -391,7 +391,7 @@ public class DefaultParser implements Parser {
             consumeToken();
 
             if (!isType(token.type())) {
-                throw new SyntaxError("Expected type after as keyword");
+                throw new SyntaxError("Expected returnType after as keyword");
             }
             String type = token.type().name();
             consumeToken();

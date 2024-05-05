@@ -1,5 +1,7 @@
 package ast.expression;
 
+import ast.Visitor;
+
 public class NegatedExpression implements Expression {
     private final Expression expression;
 
@@ -10,5 +12,10 @@ public class NegatedExpression implements Expression {
     @Override
     public String toString() {
         return String.format("![%s]", expression);
+    }
+
+    @Override
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 }

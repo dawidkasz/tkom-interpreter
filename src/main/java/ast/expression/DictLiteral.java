@@ -1,14 +1,12 @@
 package ast.expression;
 
-import java.util.ArrayList;
+import ast.Visitor;
+
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-public class DictLiteral implements Expression {
-    private final Map<Expression, Expression> content;
-
+public record DictLiteral(Map<Expression, Expression> content) implements Expression {
     public DictLiteral(Map<Expression, Expression> content) {
         this.content = new HashMap<>(content);
     }
@@ -18,12 +16,7 @@ public class DictLiteral implements Expression {
     }
 
     @Override
-    public String toString() {
-        List<String> params = new ArrayList<>();
-        content.forEach((k, v) -> {
-            params.add(String.format("%s: %s", k, v));
-        });
-
-        return "{" + String.join(", ", params) + "}";
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
     }
 }
