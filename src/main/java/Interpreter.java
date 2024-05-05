@@ -16,7 +16,10 @@ public class Interpreter {
          int add(int a, int b) {}
          
         int get() {
-            return 3 || 2 && 2
+            while (3 || 2 && 2) {
+               return 5
+            }
+            return 1
         }
         
         int get2() {

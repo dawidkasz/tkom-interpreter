@@ -20,6 +20,7 @@ import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
 import ast.statement.ReturnStatement;
 import ast.statement.Statement;
+import ast.statement.WhileStatement;
 import lexer.Lexer;
 import lexer.Token;
 import lexer.TokenType;
@@ -171,7 +172,8 @@ public class DefaultParser implements Parser {
 
     // statement = ifStatement | whileStatement | forEachStatement | variableDeclaration | assignment | functionCall | returnStatement;
     private Optional<Statement> parseStatement() {
-        return parseReturnStatement();
+        return parseReturnStatement()
+                .or(this::parseWhileStatement);
     }
 
     private Optional<Statement> parseReturnStatement() {
@@ -187,6 +189,28 @@ public class DefaultParser implements Parser {
         }
 
         return Optional.of(new ReturnStatement(returnExpression.get()));
+    }
+
+    // whileStatement = "while" "(" expression ")" statementBlock;
+    private Optional<Statement> parseWhileStatement() {
+        if (token.type() != TokenType.WHILE_KEYWORD) {
+            return Optional.empty();
+        }
+
+        consumeToken();
+
+        expectToken(TokenType.LEFT_ROUND_BRACKET, "Expected left round bracket after while keyword");
+
+        var expression = parseExpression();
+        if (expression.isEmpty()) {
+            throw new SyntaxError("Missing expression in while statement");
+        }
+
+        expectToken(TokenType.RIGHT_ROUND_BRACKET, "Expected right round bracket after while keyword");
+
+        var block = parseStatementBlock();
+
+        return Optional.of(new WhileStatement(expression.get(), block));
     }
 
     // expression = andExpression {orOperator andExpression};
@@ -265,16 +289,15 @@ public class DefaultParser implements Parser {
 
         var leftLogicFactor = left.get();
 
-        boolean plus;
         while (token.type() == TokenType.PLUS_OPERATOR || token.type() == TokenType.MINUS_OPERATOR) {
-            plus = token.type() == TokenType.PLUS_OPERATOR;
+            TokenType tokenType = token.type();
             consumeToken();
             var rightLogicFactor = parseMultiplicativeExpression();
             if (rightLogicFactor.isEmpty()) {
                 throw new SyntaxError("Missing right side of + operator");
             }
 
-            if (plus) {
+            if (tokenType == TokenType.PLUS_OPERATOR) {
                 leftLogicFactor = new PlusExpression(leftLogicFactor, rightLogicFactor.get());
             } else {
                 leftLogicFactor = new MinusExpression(leftLogicFactor, rightLogicFactor.get());
