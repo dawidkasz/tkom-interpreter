@@ -178,6 +178,7 @@ public class DefaultParser implements Parser {
                 .or(this::parseWhileStatement);
     }
 
+    // returnStatement = "return" expression ";";
     private Optional<Statement> parseReturnStatement() {
         if (token.type() != TokenType.RETURN_KEYWORD) {
             return Optional.empty();
