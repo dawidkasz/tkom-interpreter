@@ -8,9 +8,11 @@ statement = ifStatement |
             functionCall |
             returnStatement;
 
-functionDefinition = functionReturnType identifier parameterList statementBlock;
+functionDefinition = functionReturnType identifier "(" parameters ")" statementBlock;
 
-parameterList = "(" [type identifier, {"," type identifier}] ")";
+parameters = [parameter, {"," parameter}];
+
+parameter = type identifier;
 
 statementBlock = "{" {statement} "}";
 
@@ -35,11 +37,13 @@ expression = andExpression {orOperator andExpression};
 
 andExpression = relationExpression {andOperator relationExpression};
 
-relationExpression = additiveExpression {relationOperator additiveExpression};
+relationExpression = additiveExpression [relationOperator additiveExpression];
 
 additiveExpression = multiplicativeExpression {additiveOperator multiplicativeExpression};
 
-multiplicativeExpression = negatedSingleExpression {multiplicativeOperator negatedSingleExpression};
+multiplicativeExpression = nullableSingleExpression {multiplicativeOperator nullableSingleExpression};
+
+nullableSingleExpression = negatedSingleExpression ["?"];
 
 negatedSingleExpression = ["!" | "-"] castedExpression;
 
@@ -49,7 +53,7 @@ singleExpression = identifier |
                    literal |
                    "(" expression ")" |
                    functionCallAsExpression |
-                   identifier "[" expression "]" ["?"];
+                   identifier "[" expression "]";
 
 functionCallAsExpression = identifier argumentList;
 
