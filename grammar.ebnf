@@ -92,7 +92,7 @@ identifier = (letter | "_") {letter | digit | "_"};
 literal = stringLiteral |
           intLiteral |
           floatLiteral |
-          dictionaryLiteral |
+          dictLiteral |
           "null";
 
 letter = "a".."z" | "A".."Z";
@@ -108,4 +108,6 @@ intLiteral = "0" | nonZeroDigit {digit};
 floatLiteral = "0." digit {digit} |
                nonZeroDigit {digit} "." digit {digit};
 
-dictionaryLiteral = "{" [expression ":" expression {"," expression ":" expression }] "}";
+dictLiteral = "{" [dictLiteralKeyValuePair {"," dictLiteralKeyValuePair }] "}";
+
+dictLiteralKeyValuePair = expression ":" expression;

@@ -5,6 +5,7 @@ import ast.Parameter;
 import ast.Program;
 import ast.expression.AndExpression;
 import ast.expression.CastedExpression;
+import ast.expression.DictLiteral;
 import ast.expression.DivideExpression;
 import ast.expression.Expression;
 import ast.expression.FloatLiteral;
@@ -25,6 +26,7 @@ import lexer.Lexer;
 import lexer.Token;
 import lexer.TokenType;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -371,7 +373,7 @@ public class DefaultParser implements Parser {
         return parseCastedExpression();
     }
 
-    // castedExpression = singleExpression ["as" simpleType];
+    // castedExpression = simpleExpression ["as" simpleType];
     private Optional<Expression> parseCastedExpression() {
         var expression = parseSimpleExpression();
         if (expression.isEmpty()) {
@@ -392,6 +394,7 @@ public class DefaultParser implements Parser {
         return expression;
     }
 
+    // simpleExpression = identifier | literal | "(" expression ")" | functionCallAsExpression | identifier "[" expression "]";
     private Optional<Expression> parseSimpleExpression() {
         if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
             consumeToken();
@@ -424,16 +427,52 @@ public class DefaultParser implements Parser {
             return Optional.of(new StringLiteral(value));
         }
 
-        if (token.type() == TokenType.IDENTIFIER) {
-//            var identifier = token;
-//            consumeToken();
-//            if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
-//                consumeToken();
-//
-//            }
+        if (token.type() == TokenType.LEFT_CURLY_BRACKET) {
+            return Optional.of(parseDictLiteral());
         }
 
         return Optional.empty();
+    }
+
+    // dictLiteral = "{" [expression ":" expression {"," expression ":" expression }] "}";
+    private Expression parseDictLiteral() {
+        expectToken(TokenType.LEFT_CURLY_BRACKET, "Expected left curly bracket");
+        if (token.type() == TokenType.RIGHT_CURLY_BRACKET) {
+            return DictLiteral.empty();
+        }
+
+        Map<Expression, Expression> content = new HashMap<>();
+
+        var entry = parseDictLiteralKeyValuePair();
+        content.put(entry.getKey(), entry.getValue());
+
+        while (token.type() == TokenType.COMMA) {
+            consumeToken();
+
+            entry = parseDictLiteralKeyValuePair();
+            content.put(entry.getKey(), entry.getValue());
+        }
+
+        expectToken(TokenType.RIGHT_CURLY_BRACKET, "Expected right curly bracket");
+
+        return new DictLiteral(content);
+    }
+
+    // dictLiteralKeyValuePair = expression ":" expression;
+    private AbstractMap.SimpleImmutableEntry<Expression, Expression> parseDictLiteralKeyValuePair() {
+        Optional<Expression> key = parseExpression();
+        if (key.isEmpty()) {
+            throw new SyntaxError("Missing key in dict literal");
+        }
+
+        expectToken(TokenType.COLON, "Missing colon after key in dict literal");
+
+        Optional<Expression> value = parseExpression();
+        if (value.isEmpty()) {
+            throw new SyntaxError("Missing value in dict literal");
+        }
+
+        return new AbstractMap.SimpleImmutableEntry<Expression, Expression>(key.get(), value.get());
     }
 
     // argumentList = [expression, {"," expression}];

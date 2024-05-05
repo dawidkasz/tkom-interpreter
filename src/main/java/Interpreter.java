@@ -23,7 +23,7 @@ public class Interpreter {
         }
         
         int get2() {
-            return 1 < 2 || 2 < 3 && 5 < 6 && 7 < 2 || 4 < 1
+            return {"a": 2, 2: 1, 3: "c", "a": 5.5}
         }
         
         int get3() {
