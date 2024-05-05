@@ -47,9 +47,9 @@ nullableSingleExpression = negatedSingleExpression ["?"];
 
 negatedSingleExpression = ["!" | "-"] castedExpression;
 
-castedExpression = singleExpression ["as" simpleType];
+castedExpression = simpleExpression ["as" simpleType];
 
-singleExpression = identifier |
+simpleExpression = identifier |
                    literal |
                    "(" expression ")" |
                    functionCallAsExpression |
