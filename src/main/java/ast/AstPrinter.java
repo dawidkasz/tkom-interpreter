@@ -25,8 +25,10 @@ import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
 import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
+import ast.statement.DictAssignment;
 import ast.statement.ForeachStatement;
 import ast.statement.ReturnStatement;
+import ast.statement.VariableAssignment;
 import ast.statement.WhileStatement;
 
 public class AstPrinter implements Visitor {
@@ -84,6 +86,33 @@ public class AstPrinter implements Visitor {
         });
         print("\n");
         print("]");
+    }
+
+    @Override
+    public void visit(VariableAssignment assignment) {
+        print("Assign(\n");
+        withIndentation(() -> {
+            print(String.format("varName=%s\n", assignment.variableName()));
+            print("value=");
+            withoutIndentationForNextLine(() -> assignment.expression().accept(this));
+        });
+        print("\n");
+        print(")");
+    }
+
+    @Override
+    public void visit(DictAssignment assignment) {
+        print("DictAssign(\n");
+        withIndentation(() -> {
+            print(String.format("varName=%s\n", assignment.variableName()));
+            print("key=");
+            withoutIndentationForNextLine(() -> assignment.key().accept(this));
+            print("\n");
+            print("value=");
+            withoutIndentationForNextLine(() -> assignment.value().accept(this));
+        });
+        print("\n");
+        print(")");
     }
 
     @Override

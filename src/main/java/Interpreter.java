@@ -70,9 +70,22 @@ public class Interpreter {
                 return 1;
             }
         }
+        
+        void f7() {
+            x = 4;
+            mp[4] = 5;
+        }
         """;
 
-        var parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input2)));
+        var input3 = """
+        void f7() {
+            fun(1,2);
+            x = fun2();
+            mp[4+4] = 5;
+        }      
+        """;
+
+        var parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input3)));
 
         var program = parser.parseProgram();
 

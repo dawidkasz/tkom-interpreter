@@ -29,9 +29,11 @@ import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
 import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
+import ast.statement.DictAssignment;
 import ast.statement.ForeachStatement;
 import ast.statement.ReturnStatement;
 import ast.statement.Statement;
+import ast.statement.VariableAssignment;
 import ast.statement.WhileStatement;
 import ast.type.SimpleType;
 import ast.type.Type;
@@ -190,24 +192,61 @@ public class DefaultParser implements Parser {
 
     // statement = ifStatement | whileStatement | forEachStatement | variableDeclaration | assignment | functionCall | returnStatement;
     private Optional<Statement> parseStatement() {
-        return parseForeachStatement()
+        return parseIfStatement()
+                .or(this::parseVariableDeclaration)
+                .or(this::parseAssignmentOrFunctionCall)
                 .or(this::parseWhileStatement)
+                .or(this::parseForeachStatement)
                 .or(this::parseReturnStatement);
     }
 
-    // returnStatement = "return" expression ";";
-    private Optional<Statement> parseReturnStatement() {
-        if (token.type() != TokenType.RETURN_KEYWORD) {
+    private Optional<Statement> parseIfStatement() {
+        return Optional.empty();
+    }
+
+    private Optional<Statement> parseVariableDeclaration() {
+        return Optional.empty();
+    }
+
+    private Optional<Statement> parseAssignmentOrFunctionCall() {
+        if (token.type() != TokenType.IDENTIFIER) {
             return Optional.empty();
         }
 
+        String identifierName = (String) token.value();
+
         consumeToken();
 
-        Expression returnExpression = parseExpression().orElseThrow(() -> new SyntaxError("Missing return expression"));
+        if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
+            consumeToken();
+            List<Expression> arguments = parseArguments();
+            expectToken(TokenType.RIGHT_ROUND_BRACKET, "Missing right round bracket");
+            expectToken(TokenType.SEMICOLON, "Expected semicolon");
+            return Optional.of(new FunctionCall(identifierName, arguments));
+        }
 
-        expectToken(TokenType.SEMICOLON, "Missing semicolon");
+        if (token.type() == TokenType.ASSIGNMENT) {
+            consumeToken();
+            Expression expression = parseExpression().orElseThrow(() -> new SyntaxError("Expected expression"));
+            expectToken(TokenType.SEMICOLON, "Expected semicolon");
+            return Optional.of(new VariableAssignment(identifierName, expression));
+        }
 
-        return Optional.of(new ReturnStatement(returnExpression));
+        if (token.type() == TokenType.LEFT_SQUARE_BRACKET) {
+            consumeToken();
+            Expression key = parseExpression().orElseThrow(() -> new SyntaxError("Expected key"));
+
+            expectToken(TokenType.RIGHT_SQUARE_BRACKET, "Expected right square bracket");
+            expectToken(TokenType.ASSIGNMENT, "Expected assignment operator");
+
+            Expression value = parseExpression().orElseThrow(() -> new SyntaxError("Expected value"));
+
+            expectToken(TokenType.SEMICOLON, "Expected semicolon");
+
+            return Optional.of(new DictAssignment(identifierName, key, value));
+        }
+
+        throw new SyntaxError("Can't parse assignment or function call");
     }
 
     // whileStatement = "while" "(" expression ")" statementBlock;
@@ -258,6 +297,21 @@ public class DefaultParser implements Parser {
         var block = parseStatementBlock();
 
         return Optional.of(new ForeachStatement((SimpleType) type, (String) identifier.value(), iterable, block));
+    }
+
+    // returnStatement = "return" expression ";";
+    private Optional<Statement> parseReturnStatement() {
+        if (token.type() != TokenType.RETURN_KEYWORD) {
+            return Optional.empty();
+        }
+
+        consumeToken();
+
+        Expression returnExpression = parseExpression().orElseThrow(() -> new SyntaxError("Missing return expression"));
+
+        expectToken(TokenType.SEMICOLON, "Missing semicolon");
+
+        return Optional.of(new ReturnStatement(returnExpression));
     }
 
     // expression = andExpression {orOperator andExpression};
