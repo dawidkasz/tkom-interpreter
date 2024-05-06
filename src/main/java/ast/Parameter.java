@@ -1,4 +1,6 @@
 package ast;
 
-public record Parameter(String type, String name) {
+import ast.type.Type;
+
+public record Parameter(Type type, String name) {
 }

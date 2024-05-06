@@ -26,6 +26,8 @@ import ast.expression.VariableValue;
 import ast.statement.ReturnStatement;
 import ast.statement.Statement;
 import ast.statement.WhileStatement;
+import ast.type.Type;
+import ast.type.VoidType;
 import lexer.Lexer;
 import lexer.Token;
 import lexer.TokenType;
@@ -68,8 +70,7 @@ public class DefaultParser implements Parser {
             return Optional.empty();
         }
 
-        TokenType type = token.type();
-        consumeToken();
+        Type type = parseType().orElseThrow(() -> new SyntaxError("Expected function return type"));
 
         Token t = expectToken(TokenType.IDENTIFIER, "Expected an identifier");
         var name = (String) t.value();
@@ -82,7 +83,7 @@ public class DefaultParser implements Parser {
 
         var block = parseStatementBlock();
 
-        return Optional.of(new FunctionDefinition(type.name(), name, params, block));
+        return Optional.of(new FunctionDefinition(type, name, params, block));
     }
 
     // parameters = [parameter, {"," parameter}];
@@ -121,15 +122,20 @@ public class DefaultParser implements Parser {
     }
 
     // returnType = simpleType | parametrizedType;
-    private Optional<String> parseType() {
-        if (isSimpleType(token.type())) {
-            var typeName = token.type().name();
+    private Optional<Type> parseType() {
+        if (token.type() == TokenType.VOID_KEYWORD) {
             consumeToken();
-            return Optional.of(typeName);
+            return Optional.of(new VoidType());
+        }
+
+        if (isSimpleType(token.type())) {
+            var type = Type.simpleType(token.type());
+            consumeToken();
+            return Optional.of(type);
         }
 
         if (isCollectionType(token.type())) {
-            var type = token.type();
+            var tokenType = token.type();
 
             consumeToken();
 
@@ -138,7 +144,7 @@ public class DefaultParser implements Parser {
             if (!isSimpleType(token.type())) {
                 throw new SyntaxError("Expected simple returnType");
             }
-            var paramType1 = token.type().name();
+            var paramType1 = Type.simpleType(token.type());
 
             consumeToken();
 
@@ -147,13 +153,13 @@ public class DefaultParser implements Parser {
             if (!isSimpleType(token.type())) {
                 throw new SyntaxError("Expected simple returnType");
             }
-            var paramType2 = token.type().name();
+            var paramType2 = Type.simpleType(token.type());
 
             consumeToken();
 
             expectToken(TokenType.RIGHT_SQUARE_BRACKET, "Expected right square bracket");
 
-            return Optional.of(String.format("%s[%s %s]", type, paramType1, paramType2));
+            return Optional.of(Type.collectionType(tokenType, paramType1, paramType2));
         }
 
         return Optional.empty();
@@ -390,10 +396,11 @@ public class DefaultParser implements Parser {
         if (token.type() == TokenType.AS_KEYWORD) {
             consumeToken();
 
-            if (!isType(token.type())) {
-                throw new SyntaxError("Expected returnType after as keyword");
+            if (!isSimpleType(token.type())) {
+                throw new SyntaxError("Expected simple type after as keyword");
             }
-            String type = token.type().name();
+            Type type = Type.simpleType(token.type());
+
             consumeToken();
             return Optional.of(new CastedExpression(expression.get(), type));
         }

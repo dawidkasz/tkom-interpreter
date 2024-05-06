@@ -53,11 +53,11 @@ public class Interpreter {
             return (x+2)?;
         }
         
-        int fun3() {
+        void fun3() {
             return f(3, 4, 5+5-3) + y;
         }
         
-        int fun4() {
+        dict[int,int] fun4() {
             return {f(): 4 + 2 - 1, 2: 5}[2];
         }
         """;
