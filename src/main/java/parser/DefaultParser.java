@@ -190,24 +190,39 @@ public class DefaultParser implements Parser {
         return statements;
     }
 
-    // statement = ifStatement | whileStatement | forEachStatement | variableDeclaration | assignment | functionCall | returnStatement;
+    // statement = ifStatement | whileStatement | forEachStatement |
+    //             variableDeclaration | assignment | functionCall | returnStatement;
     private Optional<Statement> parseStatement() {
         return parseIfStatement()
-                .or(this::parseVariableDeclaration)
-                .or(this::parseAssignmentOrFunctionCall)
                 .or(this::parseWhileStatement)
                 .or(this::parseForeachStatement)
+                .or(this::parseVariableDeclaration)
+                .or(this::parseAssignmentOrFunctionCall)
                 .or(this::parseReturnStatement);
     }
 
     private Optional<Statement> parseIfStatement() {
         return Optional.empty();
+//        if (token.type() != TokenType.IF_KEYWORD) {
+//            return Optional.empty();
+//        }
+//
+//        expectToken(TokenType.LEFT_ROUND_BRACKET, "Expected left round bracket");
+//        var condition = parseExpression().orElseThrow(() -> new SyntaxError("Missing condition"));
+//        expectToken(TokenType.RIGHT_ROUND_BRACKET, "Expected right round bracket");
+//
+//        var block = parseStatementBlock();
+//
+//        return Optional.empty();
     }
 
     private Optional<Statement> parseVariableDeclaration() {
         return Optional.empty();
     }
 
+    // assignmentOrFunctionCall = (identifier "=" expression ";") |
+    //         (identifier "[" expression "]" "=" expression ";") |
+    //         identifier "(" arguments ")"
     private Optional<Statement> parseAssignmentOrFunctionCall() {
         if (token.type() != TokenType.IDENTIFIER) {
             return Optional.empty();
