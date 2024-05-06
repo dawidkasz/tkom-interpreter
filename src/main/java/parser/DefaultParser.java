@@ -20,13 +20,14 @@ import ast.expression.LessThanOrEqual;
 import ast.expression.MinusExpression;
 import ast.expression.ModuloExpression;
 import ast.expression.MultiplyExpression;
-import ast.expression.NegatedExpression;
+import ast.expression.NegationExpression;
 import ast.expression.NotEqual;
 import ast.expression.Null;
 import ast.expression.NullableExpression;
 import ast.expression.OrExpression;
 import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
+import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
 import ast.statement.ReturnStatement;
 import ast.statement.Statement;
@@ -382,12 +383,20 @@ public class DefaultParser implements Parser {
 
     // negatedSingleExpression = ["!" | "-"] castedExpression;
     private Optional<Expression> parseNegatedExpression() {
-        if (token.type() == TokenType.NEGATION_OPERATOR || token.type() == TokenType.MINUS_OPERATOR) {
+        if (token.type() == TokenType.NEGATION_OPERATOR) {
             consumeToken();
             Expression expression = parseCastedExpression()
                     .orElseThrow(() -> new SyntaxError("Expected expression after negation operator"));
 
-            return Optional.of(new NegatedExpression(expression));
+            return Optional.of(new NegationExpression(expression));
+        }
+
+        if (token.type() == TokenType.MINUS_OPERATOR) {
+            consumeToken();
+            Expression expression = parseCastedExpression()
+                    .orElseThrow(() -> new SyntaxError("Expected expression after unary minus operator"));
+
+            return Optional.of(new UnaryMinusExpression(expression));
         }
 
         return parseCastedExpression();

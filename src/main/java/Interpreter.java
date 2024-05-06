@@ -60,6 +60,10 @@ public class Interpreter {
         dict[int,int] fun4() {
             return {f(): 4 + 2 - 1, 2: 5}[2];
         }
+        
+        int f5() {
+            return !(1 == 2) || -(5+5) < 10;
+        }
         """;
 
         var parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input2)));

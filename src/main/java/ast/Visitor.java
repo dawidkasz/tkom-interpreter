@@ -15,13 +15,14 @@ import ast.expression.LessThanOrEqual;
 import ast.expression.MinusExpression;
 import ast.expression.ModuloExpression;
 import ast.expression.MultiplyExpression;
-import ast.expression.NegatedExpression;
+import ast.expression.NegationExpression;
 import ast.expression.NotEqual;
 import ast.expression.Null;
 import ast.expression.NullableExpression;
 import ast.expression.OrExpression;
 import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
+import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
 import ast.statement.ReturnStatement;
 import ast.statement.WhileStatement;
@@ -44,7 +45,7 @@ public interface Visitor {
     void visit(MinusExpression minusExpression);
     void visit(ModuloExpression moduloExpression);
     void visit(MultiplyExpression multiplyExpression);
-    void visit(NegatedExpression negatedExpression);
+    void visit(NegationExpression negationExpression);
     void visit(Null aNull);
     void visit(OrExpression orExpression);
     void visit(VariableValue variableValue);
@@ -55,4 +56,5 @@ public interface Visitor {
     void visit(GreaterThanOrEqual greaterThanOrEqual);
     void visit(Equal equal);
     void visit(NotEqual notEqual);
+    void visit(UnaryMinusExpression unaryMinusExpression);
 }

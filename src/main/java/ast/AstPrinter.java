@@ -16,13 +16,14 @@ import ast.expression.LessThanOrEqual;
 import ast.expression.MinusExpression;
 import ast.expression.ModuloExpression;
 import ast.expression.MultiplyExpression;
-import ast.expression.NegatedExpression;
+import ast.expression.NegationExpression;
 import ast.expression.NotEqual;
 import ast.expression.Null;
 import ast.expression.NullableExpression;
 import ast.expression.OrExpression;
 import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
+import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
 import ast.statement.ReturnStatement;
 import ast.statement.WhileStatement;
@@ -229,8 +230,13 @@ public class AstPrinter implements Visitor {
     }
 
     @Override
-    public void visit(NegatedExpression negatedExpression) {
+    public void visit(NegationExpression negationExpression) {
+        visitUnaryOp("Neg", negationExpression.expression());
+    }
 
+    @Override
+    public void visit(UnaryMinusExpression unaryMinusExpression) {
+        visitUnaryOp("UnaryMinus", unaryMinusExpression.expression());
     }
 
     @Override
@@ -255,10 +261,7 @@ public class AstPrinter implements Visitor {
 
     @Override
     public void visit(NullableExpression nullableExpression) {
-        print("Nullable(\n");
-        withIndentation(() -> nullableExpression.expression().accept(this));
-        print("\n");
-        print(")");
+        visitUnaryOp("Nullable", nullableExpression.expression());
     }
 
     @Override
@@ -289,6 +292,13 @@ public class AstPrinter implements Visitor {
     @Override
     public void visit(NotEqual notEqual) {
         visitBinOp("NotEq", notEqual.left(), notEqual.right());
+    }
+
+    private void visitUnaryOp(String opName, Expression expression) {
+        print(String.format("%s(\n", opName));
+        withIndentation(() -> expression.accept(this));
+        print("\n");
+        print(")");
     }
 
     private void visitBinOp(String opName, Expression left, Expression right) {
