@@ -1,4 +1,4 @@
-package lexer;
+package parser;
 
 import ast.FunctionCall;
 import ast.FunctionDefinition;
@@ -6,11 +6,13 @@ import ast.Parameter;
 import ast.Program;
 import ast.expression.AndExpression;
 import ast.expression.CastedExpression;
+import ast.expression.DictLiteral;
 import ast.expression.DivideExpression;
 import ast.expression.Equal;
 import ast.expression.GreaterThanOrEqual;
 import ast.expression.IntLiteral;
 import ast.expression.LessThan;
+import ast.expression.LessThanOrEqual;
 import ast.expression.MinusExpression;
 import ast.expression.MultiplyExpression;
 import ast.expression.NegationExpression;
@@ -22,20 +24,27 @@ import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
 import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
+import ast.statement.ForeachStatement;
 import ast.statement.ReturnStatement;
+import ast.statement.WhileStatement;
 import ast.type.DictType;
 import ast.type.FloatType;
 import ast.type.IntType;
 import ast.type.StringType;
 import ast.type.VoidType;
+import lexer.Lexer;
+import lexer.Token;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
-import parser.DefaultParser;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
-import static lexer.TokenFactory.getToken;
 import static lexer.TokenType.AND_OPERATOR;
+import static lexer.TokenType.ASSIGNMENT;
 import static lexer.TokenType.AS_KEYWORD;
+import static lexer.TokenType.COLON;
 import static lexer.TokenType.COMMA;
 import static lexer.TokenType.DICT_KEYWORD;
 import static lexer.TokenType.DIVISION_OPERATOR;
@@ -47,8 +56,8 @@ import static lexer.TokenType.INT_KEYWORD;
 import static lexer.TokenType.INT_LITERAL;
 import static lexer.TokenType.LEFT_CURLY_BRACKET;
 import static lexer.TokenType.LEFT_ROUND_BRACKET;
-import static lexer.TokenType.LEFT_SQUARE_BRACKET;
 import static lexer.TokenType.LESS_THAN_OPERATOR;
+import static lexer.TokenType.LESS_THAN_OR_EQUAL_OPERATOR;
 import static lexer.TokenType.MINUS_OPERATOR;
 import static lexer.TokenType.MULTIPLICATION_OPERATOR;
 import static lexer.TokenType.NEGATION_OPERATOR;
@@ -59,10 +68,11 @@ import static lexer.TokenType.OR_OPERATOR;
 import static lexer.TokenType.PLUS_OPERATOR;
 import static lexer.TokenType.RIGHT_CURLY_BRACKET;
 import static lexer.TokenType.RIGHT_ROUND_BRACKET;
-import static lexer.TokenType.RIGHT_SQUARE_BRACKET;
+import static lexer.TokenType.SEMICOLON;
 import static lexer.TokenType.STRING_KEYWORD;
 import static lexer.TokenType.STRING_LITERAL;
 import static lexer.TokenType.VOID_KEYWORD;
+import static parser.TokenFactory.getToken;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ParserTest {
@@ -293,6 +303,84 @@ public class ParserTest {
                         Null.getInstance()
                 ))));
     }
+
+    @Test
+    void should_parse_while_statement() {
+        /*
+        given:
+
+        while(x <= 5) {
+            some_func();
+            x = x + 1;
+            while(y) {}
+        }
+        */
+
+        var condition = List.of(getToken(IDENTIFIER, "x"), getToken(LESS_THAN_OR_EQUAL_OPERATOR), getToken(INT_LITERAL, 5));
+
+        var body = List.of(getToken(IDENTIFIER, "some_func"), getToken(LEFT_ROUND_BRACKET), getToken(RIGHT_ROUND_BRACKET),
+                getToken(SEMICOLON), getToken(IDENTIFIER, "x"), getToken(ASSIGNMENT), getToken(IDENTIFIER, "x"),
+                getToken(PLUS_OPERATOR), getToken(INT_LITERAL, 1), getToken(SEMICOLON));
+
+        body = Stream.concat(body.stream(), TokenFactory.whileStatement(List.of(getToken(IDENTIFIER, "y")), List.of()).stream()).toList();
+
+        var tokens = TokenFactory.program(List.of(
+                TokenFactory.function(VOID_KEYWORD, "f", List.of(), TokenFactory.whileStatement(condition, body))
+        ));
+
+        // when
+        var program = parseProgram(tokens);
+
+        // then
+        assertThat(program.functions().get("f").statementBlock())
+                .first()
+                .asInstanceOf(InstanceOfAssertFactories.type(WhileStatement.class))
+                .matches(s -> s.condition().equals(new LessThanOrEqual(new VariableValue("x"), new IntLiteral(5))))
+                .extracting(WhileStatement::statementBlock)
+                .matches(block -> block.size() == 3);
+    }
+
+    @Test
+    void should_parse_foreach_statement_with_dict_literal() {
+        /*
+        given:
+
+        foreach(string x : {"x": a, "y": 2}) {
+            some_f();
+        }
+        */
+
+        var iterable = List.of(getToken(LEFT_CURLY_BRACKET), getToken(STRING_LITERAL, "x"), getToken(COLON),
+                getToken(IDENTIFIER, "a"), getToken(COMMA), getToken(STRING_LITERAL, "y"), getToken(COLON),
+                getToken(INT_LITERAL, 2), getToken(RIGHT_CURLY_BRACKET));
+
+        var body = List.of(getToken(IDENTIFIER, "some_f"), getToken(LEFT_ROUND_BRACKET),
+                getToken(RIGHT_ROUND_BRACKET), getToken(SEMICOLON));
+
+        var tokens = TokenFactory.program(List.of(
+                TokenFactory.function(
+                        VOID_KEYWORD, "f", List.of(),
+                        TokenFactory.foreachStatement(STRING_KEYWORD, "x", iterable, body)
+                )
+        ));
+
+        // when
+        var program = parseProgram(tokens);
+
+        // then
+        assertThat(program.functions().get("f").statementBlock())
+                .first()
+                .asInstanceOf(InstanceOfAssertFactories.type(ForeachStatement.class))
+                .matches(s -> s.varType().equals(new StringType()))
+                .matches(s -> s.varName().equals("x"))
+                .matches(s -> s.iterable().equals(new DictLiteral(Map.of(
+                        new StringLiteral("x"), new VariableValue("a"),
+                        new StringLiteral("y"), new IntLiteral(2)
+                ))))
+                .extracting(ForeachStatement::statementBlock)
+                .matches(block -> block.size() == 1);
+    }
+
 
     private Program parseProgram(List<Token> tokens) {
         var lexer = new Lexer() {
