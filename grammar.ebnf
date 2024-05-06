@@ -2,7 +2,7 @@ program = {variableDeclaration | functionDefinition};
 
 statement = ifStatement |
             whileStatement |
-            forEachStatement |
+            foreachStatement |
             variableDeclaration |
             assignment |
             functionCall |
@@ -20,7 +20,7 @@ ifStatement = "if" "(" expression ")" statementBlock ["else" statementBlock];
 
 whileStatement = "while" "(" expression ")" statementBlock;
 
-forEachStatement = "foreach" "(" simpleType identifier ":" expression ")" statementBlock;
+foreachStatement = "foreach" "(" simpleType identifier ":" expression ")" statementBlock;
 
 variableDeclaration = type identifier ["=" expression] ";";
 

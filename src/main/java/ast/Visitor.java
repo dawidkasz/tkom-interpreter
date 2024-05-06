@@ -24,6 +24,7 @@ import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
 import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
+import ast.statement.ForeachStatement;
 import ast.statement.ReturnStatement;
 import ast.statement.WhileStatement;
 
@@ -31,6 +32,7 @@ public interface Visitor {
     void visit(Program program);
     void visit(FunctionDefinition functionDefinition);
     void visit(WhileStatement whileStatement);
+    void visit(ForeachStatement foreachStatement);
     void visit(ReturnStatement returnStatement);
     void visit(FunctionCall functionCall);
     void visit(DivideExpression divideExpression);

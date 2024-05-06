@@ -64,6 +64,12 @@ public class Interpreter {
         int f5() {
             return !(1 == 2) || -(5+5) < 10;
         }
+        
+        void f6() {
+            foreach(int x : mp) {
+                return 1;
+            }
+        }
         """;
 
         var parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input2)));

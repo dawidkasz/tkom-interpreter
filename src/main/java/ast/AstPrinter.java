@@ -25,6 +25,7 @@ import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
 import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
+import ast.statement.ForeachStatement;
 import ast.statement.ReturnStatement;
 import ast.statement.WhileStatement;
 
@@ -100,6 +101,33 @@ public class AstPrinter implements Visitor {
                     })
             );
             if (whileStatement.statementBlock().isEmpty()) {
+                System.out.print("]");
+            } else {
+                print("\n");
+                print("]");
+            }
+        });
+        print("\n");
+        print("]");
+    }
+
+    @Override
+    public void visit(ForeachStatement foreachStatement) {
+        print("Foreach(\n");
+        withIndentation(() -> {
+            print(String.format("varType=%s\n", foreachStatement.varType()));
+            print(String.format("varName=%s\n", foreachStatement.varName()));
+            print("iterable=");
+            withoutIndentationForNextLine(() -> foreachStatement.iterable().accept(this));
+            print("\n");
+            print("body=[");
+            withIndentation(() ->
+                    foreachStatement.statementBlock().forEach(statement -> {
+                        print("\n");
+                        statement.accept(this);
+                    })
+            );
+            if (foreachStatement.statementBlock().isEmpty()) {
                 System.out.print("]");
             } else {
                 print("\n");

@@ -29,9 +29,11 @@ import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
 import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
+import ast.statement.ForeachStatement;
 import ast.statement.ReturnStatement;
 import ast.statement.Statement;
 import ast.statement.WhileStatement;
+import ast.type.SimpleType;
 import ast.type.Type;
 import ast.type.VoidType;
 import lexer.Lexer;
@@ -188,8 +190,9 @@ public class DefaultParser implements Parser {
 
     // statement = ifStatement | whileStatement | forEachStatement | variableDeclaration | assignment | functionCall | returnStatement;
     private Optional<Statement> parseStatement() {
-        return parseReturnStatement()
-                .or(this::parseWhileStatement);
+        return parseForeachStatement()
+                .or(this::parseWhileStatement)
+                .or(this::parseReturnStatement);
     }
 
     // returnStatement = "return" expression ";";
@@ -225,6 +228,36 @@ public class DefaultParser implements Parser {
         var block = parseStatementBlock();
 
         return Optional.of(new WhileStatement(expression, block));
+    }
+
+    // foreachStatement = "foreach" "(" simpleType identifier ":" expression ")" statementBlock;
+    private Optional<Statement> parseForeachStatement() {
+        if (token.type() != TokenType.FOREACH_KEYWORD) {
+            return Optional.empty();
+        }
+
+        consumeToken();
+
+        expectToken(TokenType.LEFT_ROUND_BRACKET, "Expected left round bracket");
+
+        if (!token.type().isSimpleType()) {
+            throw new SyntaxError("Invalid type");
+        }
+
+        Type type = parseType().orElseThrow(() -> new SyntaxError("Missing type"));
+
+        var identifier = expectToken(TokenType.IDENTIFIER, "Expected identifier");
+
+        expectToken(TokenType.COLON, "Expected colon");
+
+        Expression iterable = parseExpression()
+                .orElseThrow(() -> new SyntaxError("Missing expression in while statement"));
+
+        expectToken(TokenType.RIGHT_ROUND_BRACKET, "Expected right round bracket");
+
+        var block = parseStatementBlock();
+
+        return Optional.of(new ForeachStatement((SimpleType) type, (String) identifier.value(), iterable, block));
     }
 
     // expression = andExpression {orOperator andExpression};
