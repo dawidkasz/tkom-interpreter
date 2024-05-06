@@ -79,9 +79,7 @@ public class Interpreter {
 
         var input3 = """
         void f7() {
-            fun(1,2);
-            x = fun2();
-            mp[4+4] = 5;
+            return 1 + 2 / ((3 - 4) * 5) - 6;
         }      
         """;
 
