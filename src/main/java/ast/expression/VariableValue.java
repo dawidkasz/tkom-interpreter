@@ -2,20 +2,9 @@ package ast.expression;
 
 import ast.Visitor;
 
-public class VariableValue implements Expression {
-    private final String variableName;
-
-    public VariableValue(String variableName) {
-        this.variableName = variableName;
-    }
-
-    @Override
-    public String toString() {
-        return variableName;
-    }
-
+public record VariableValue(String varName) implements Expression {
     @Override
     public void accept(Visitor visitor) {
-
+        visitor.visit(this);
     }
 }

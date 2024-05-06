@@ -12,11 +12,6 @@ public final class Null implements Expression {
     private Null() {}
 
     @Override
-    public String toString() {
-        return "null";
-    }
-
-    @Override
     public void accept(Visitor visitor) {
         visitor.visit(this);
     }

@@ -46,14 +46,25 @@ public class Interpreter {
                 return 2;
             }
         
-            return 1 || 2;
-        }  
+            return 2 / 2 || ((2+2) * (3-3+3)) as string;
+        }
+        
+        int fun2() {
+            return (x+2)?;
+        }
+        
+        int fun3() {
+            return f(3, 4, 5+5-3) + y;
+        }
+        
+        int fun4() {
+            return {f(): 4 + 2 - 1, 2: 5}[2];
+        }
         """;
 
         var parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input2)));
 
         var program = parser.parseProgram();
-//        System.out.append(program.toString());
 
         var printer = new AstPrinter();
         printer.visit(program);

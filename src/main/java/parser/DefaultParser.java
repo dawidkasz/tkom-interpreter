@@ -6,7 +6,7 @@ import ast.Parameter;
 import ast.Program;
 import ast.expression.AndExpression;
 import ast.expression.CastedExpression;
-import ast.expression.DictKeyValue;
+import ast.expression.DictValue;
 import ast.expression.DictLiteral;
 import ast.expression.DivideExpression;
 import ast.expression.Expression;
@@ -418,7 +418,7 @@ public class DefaultParser implements Parser {
 
             expectToken(TokenType.RIGHT_SQUARE_BRACKET, "Missing right square bracket in dict key retrieval");
 
-            return Optional.of(new DictKeyValue(expression.get(), dictKey.get()));
+            return Optional.of(new DictValue(expression.get(), dictKey.get()));
         }
 
         return expression;

@@ -2,9 +2,10 @@ package ast;
 
 import ast.expression.AndExpression;
 import ast.expression.CastedExpression;
-import ast.expression.DictKeyValue;
+import ast.expression.DictValue;
 import ast.expression.DictLiteral;
 import ast.expression.DivideExpression;
+import ast.expression.Expression;
 import ast.expression.FloatLiteral;
 import ast.expression.IntLiteral;
 import ast.expression.LessThanExpression;
@@ -13,7 +14,11 @@ import ast.expression.ModuloExpression;
 import ast.expression.MultiplyExpression;
 import ast.expression.NegatedExpression;
 import ast.expression.Null;
+import ast.expression.NullableExpression;
 import ast.expression.OrExpression;
+import ast.expression.PlusExpression;
+import ast.expression.StringLiteral;
+import ast.expression.VariableValue;
 import ast.statement.ReturnStatement;
 import ast.statement.WhileStatement;
 
@@ -112,62 +117,115 @@ public class AstPrinter implements Visitor {
 
     @Override
     public void visit(FunctionCall functionCall) {
+        print("Call(\n");
+        withIndentation(() -> {
+            print(String.format("name=%s\n", functionCall.functionName()));
 
+            for (int argIdx = 0; argIdx < functionCall.arguments().size(); ++argIdx) {
+                int currentArgIdx = argIdx;
+
+                print(String.format("arg%s=", argIdx));
+                withoutIndentationForNextLine(
+                        () -> functionCall.arguments().get(currentArgIdx).accept(this)
+                );
+                print("\n");
+            }
+        });
+
+        print(")");
     }
 
     @Override
     public void visit(DivideExpression divideExpression) {
-
+        visitBinOp("Div", divideExpression.left(), divideExpression.right());
     }
 
     @Override
     public void visit(CastedExpression castedExpression) {
-
+        print("As(\n");
+        withIndentation(() -> {
+            print("value=");
+            withoutIndentationForNextLine(
+                    () -> castedExpression.expression().accept(this)
+            );
+            print("\n");
+            print(String.format("asType=%s", castedExpression.asType()));
+            print("\n");
+        });
+        print(")");
     }
 
     @Override
-    public void visit(DictKeyValue dictKeyValue) {
-
+    public void visit(DictValue dictValue) {
+        print("DictValue(\n");
+        withIndentation(() -> {
+            print("dict=");
+            withoutIndentationForNextLine(() -> dictValue.dict().accept(this));
+            print("\n");
+            print("key=");
+            withoutIndentationForNextLine(() -> dictValue.key().accept(this));
+            print("\n");
+        });
+        print(")");
     }
 
     @Override
     public void visit(DictLiteral dictLiteral) {
+        print("Lit({");
 
+        int processedKeys = 0;
+
+        for (var entry : dictLiteral.content().entrySet()) {
+            withoutIndentationForNextLine(() -> entry.getKey().accept(this));
+            System.out.print(": ");
+            withoutIndentationForNextLine(() -> entry.getValue().accept(this));
+
+            if (++processedKeys < dictLiteral.content().size()) {
+                System.out.print(", ");
+            }
+        }
+
+        System.out.print("})");
     }
 
     @Override
     public void visit(AndExpression andExpression) {
-
+        visitBinOp("And", andExpression.left(), andExpression.right());
     }
 
     @Override
     public void visit(FloatLiteral floatLiteral) {
-
+        print(String.format("Lit(%s)", floatLiteral.value()));
     }
 
     @Override
     public void visit(IntLiteral intLiteral) {
-        print(String.format("Literal(value=%s)", intLiteral.value()));
+        print(String.format("Lit(%s)", intLiteral.value()));
+    }
+
+    @Override
+    public void visit(StringLiteral stringLiteral) {
+        print(String.format("Lit(\"%s\")", stringLiteral.value()));
     }
 
     @Override
     public void visit(LessThanExpression lessThanExpression) {
-
+        visitBinOp("LessThan", lessThanExpression.left(), lessThanExpression.right());
     }
 
     @Override
     public void visit(MinusExpression minusExpression) {
-
+        visitBinOp("Minus", minusExpression.left(), minusExpression.right());
     }
 
     @Override
     public void visit(ModuloExpression moduloExpression) {
-
+        visitBinOp("Mod", moduloExpression.left(), moduloExpression.right());
     }
 
     @Override
     public void visit(MultiplyExpression multiplyExpression) {
-
+        visitBinOp("Mul", multiplyExpression.left(), multiplyExpression.right());
     }
 
     @Override
@@ -177,16 +235,38 @@ public class AstPrinter implements Visitor {
 
     @Override
     public void visit(Null aNull) {
-
+        print("Lit(null)");
     }
 
     @Override
     public void visit(OrExpression orExpression) {
-        print("Or(\n");
+        visitBinOp("Or", orExpression.left(), orExpression.right());
+    }
+
+    @Override
+    public void visit(VariableValue variableValue) {
+        print(String.format("Var(%s)", variableValue.varName()));
+    }
+
+    @Override
+    public void visit(PlusExpression plusExpression) {
+        visitBinOp("Plus", plusExpression.left(), plusExpression.right());
+    }
+
+    @Override
+    public void visit(NullableExpression nullableExpression) {
+        print("Nullable(\n");
+        withIndentation(() -> nullableExpression.expression().accept(this));
+        print("\n");
+        print(")");
+    }
+
+    private void visitBinOp(String opName, Expression left, Expression right) {
+        print(String.format("%s(\n", opName));
         withIndentation(() -> {
-            orExpression.left().accept(this);
+            left.accept(this);
             print("\n");
-            orExpression.right().accept(this);
+            right.accept(this);
             print("\n");
         });
         print(")");
