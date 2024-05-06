@@ -31,6 +31,7 @@ import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
 import ast.statement.DictAssignment;
 import ast.statement.ForeachStatement;
+import ast.statement.IfStatement;
 import ast.statement.ReturnStatement;
 import ast.statement.Statement;
 import ast.statement.VariableAssignment;
@@ -44,6 +45,7 @@ import lexer.TokenType;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -201,19 +203,27 @@ public class DefaultParser implements Parser {
                 .or(this::parseReturnStatement);
     }
 
+    // ifStatement = "if" "(" expression ")" statementBlock ["else" statementBlock];
     private Optional<Statement> parseIfStatement() {
-        return Optional.empty();
-//        if (token.type() != TokenType.IF_KEYWORD) {
-//            return Optional.empty();
-//        }
-//
-//        expectToken(TokenType.LEFT_ROUND_BRACKET, "Expected left round bracket");
-//        var condition = parseExpression().orElseThrow(() -> new SyntaxError("Missing condition"));
-//        expectToken(TokenType.RIGHT_ROUND_BRACKET, "Expected right round bracket");
-//
-//        var block = parseStatementBlock();
-//
-//        return Optional.empty();
+        if (token.type() != TokenType.IF_KEYWORD) {
+            return Optional.empty();
+        }
+
+        consumeToken();
+
+        expectToken(TokenType.LEFT_ROUND_BRACKET, "Expected left round bracket");
+        Expression condition = parseExpression().orElseThrow(() -> new SyntaxError("Missing condition"));
+        expectToken(TokenType.RIGHT_ROUND_BRACKET, "Expected right round bracket");
+
+        List<Statement> ifBlock = parseStatementBlock();
+
+        List<Statement> elseBlock = Collections.emptyList();
+        if (token.type() == TokenType.ELSE_KEYWORD) {
+            consumeToken();
+            elseBlock = parseStatementBlock();
+        }
+
+        return Optional.of(new IfStatement(condition, ifBlock, elseBlock));
     }
 
     private Optional<Statement> parseVariableDeclaration() {

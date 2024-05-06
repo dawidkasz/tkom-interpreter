@@ -26,6 +26,7 @@ import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
 import ast.statement.DictAssignment;
 import ast.statement.ForeachStatement;
+import ast.statement.IfStatement;
 import ast.statement.ReturnStatement;
 import ast.statement.VariableAssignment;
 import ast.statement.WhileStatement;
@@ -37,6 +38,7 @@ public interface Visitor {
     void visit(DictAssignment dictAssignment);
     void visit(WhileStatement whileStatement);
     void visit(ForeachStatement foreachStatement);
+    void visit(IfStatement ifStatement);
     void visit(ReturnStatement returnStatement);
     void visit(FunctionCall functionCall);
     void visit(DivideExpression divideExpression);

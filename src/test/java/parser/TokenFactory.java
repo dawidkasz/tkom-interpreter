@@ -13,9 +13,11 @@ import java.util.stream.Stream;
 import static lexer.TokenType.COLON;
 import static lexer.TokenType.COMMA;
 import static lexer.TokenType.DICT_KEYWORD;
+import static lexer.TokenType.ELSE_KEYWORD;
 import static lexer.TokenType.FLOAT_KEYWORD;
 import static lexer.TokenType.FOREACH_KEYWORD;
 import static lexer.TokenType.IDENTIFIER;
+import static lexer.TokenType.IF_KEYWORD;
 import static lexer.TokenType.LEFT_CURLY_BRACKET;
 import static lexer.TokenType.LEFT_ROUND_BRACKET;
 import static lexer.TokenType.LEFT_SQUARE_BRACKET;
@@ -112,6 +114,18 @@ public class TokenFactory {
                 iterable,
                 List.of(getToken(RIGHT_ROUND_BRACKET), getToken(LEFT_CURLY_BRACKET)),
                 body,
+                List.of(getToken(RIGHT_CURLY_BRACKET))
+        ).flatMap(Collection::stream).toList();
+    }
+
+    public static List<Token> ifElseStatement(List<Token> condition, List<Token> ifBody, List<Token> elseBody) {
+        return Stream.of(
+                List.of(getToken(IF_KEYWORD), getToken(LEFT_ROUND_BRACKET)),
+                condition,
+                List.of(getToken(RIGHT_ROUND_BRACKET), getToken(LEFT_CURLY_BRACKET)),
+                ifBody,
+                List.of(getToken(RIGHT_CURLY_BRACKET), getToken(ELSE_KEYWORD), getToken(LEFT_CURLY_BRACKET)),
+                elseBody,
                 List.of(getToken(RIGHT_CURLY_BRACKET))
         ).flatMap(Collection::stream).toList();
     }

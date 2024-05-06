@@ -9,6 +9,7 @@ import ast.expression.CastedExpression;
 import ast.expression.DictLiteral;
 import ast.expression.DivideExpression;
 import ast.expression.Equal;
+import ast.expression.GreaterThan;
 import ast.expression.GreaterThanOrEqual;
 import ast.expression.IntLiteral;
 import ast.expression.LessThan;
@@ -25,6 +26,7 @@ import ast.expression.StringLiteral;
 import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
 import ast.statement.ForeachStatement;
+import ast.statement.IfStatement;
 import ast.statement.ReturnStatement;
 import ast.statement.WhileStatement;
 import ast.type.DictType;
@@ -32,11 +34,11 @@ import ast.type.FloatType;
 import ast.type.IntType;
 import ast.type.StringType;
 import ast.type.VoidType;
-import lexer.Lexer;
 import lexer.Token;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -50,6 +52,8 @@ import static lexer.TokenType.DICT_KEYWORD;
 import static lexer.TokenType.DIVISION_OPERATOR;
 import static lexer.TokenType.EQUAL_OPERATOR;
 import static lexer.TokenType.FLOAT_KEYWORD;
+import static lexer.TokenType.FLOAT_LITERAL;
+import static lexer.TokenType.GREATER_THAN_OPERATOR;
 import static lexer.TokenType.GREATER_THAN_OR_EQUAL_OPERATOR;
 import static lexer.TokenType.IDENTIFIER;
 import static lexer.TokenType.INT_KEYWORD;
@@ -72,6 +76,7 @@ import static lexer.TokenType.SEMICOLON;
 import static lexer.TokenType.STRING_KEYWORD;
 import static lexer.TokenType.STRING_LITERAL;
 import static lexer.TokenType.VOID_KEYWORD;
+import static org.assertj.core.api.AssertionsForClassTypes.tuple;
 import static parser.TokenFactory.getToken;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -379,6 +384,41 @@ public class ParserTest {
                 ))))
                 .extracting(ForeachStatement::statementBlock)
                 .matches(block -> block.size() == 1);
+    }
+
+    @Test
+    void should_parse_if_else_statement() {
+        /*
+        given:
+
+        if (x == "abc") {
+            a();
+        } else {
+            b();
+        }
+        */
+
+        var condition = List.of(getToken(IDENTIFIER, "x"), getToken(GREATER_THAN_OPERATOR), getToken(STRING_LITERAL, "abc"));
+        var ifBody = List.of(getToken(IDENTIFIER, "a"), getToken(LEFT_ROUND_BRACKET), getToken(RIGHT_ROUND_BRACKET), getToken(SEMICOLON));
+        var elseBody = List.of(getToken(IDENTIFIER, "b"), getToken(LEFT_ROUND_BRACKET), getToken(RIGHT_ROUND_BRACKET), getToken(SEMICOLON));
+
+        var tokens = TokenFactory.program(List.of(
+                TokenFactory.function(VOID_KEYWORD, "f", List.of(), TokenFactory.ifElseStatement(condition, ifBody, elseBody))
+        ));
+
+        // when
+        var program = parseProgram(tokens);
+
+        // then
+        assertThat(program.functions().get("f").statementBlock())
+                .first()
+                .asInstanceOf(InstanceOfAssertFactories.type(IfStatement.class))
+                .matches(s -> s.condition().equals(new GreaterThan(new VariableValue("x"), new StringLiteral("abc"))))
+                .extracting(s -> tuple(s.ifBlock(), s.elseBlock()))
+                .matches(t -> t.equals(tuple(
+                        List.of(new FunctionCall("a", Collections.emptyList())),
+                        List.of(new FunctionCall("b", Collections.emptyList()))
+                )));
     }
 
 

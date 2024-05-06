@@ -78,8 +78,8 @@ public class Interpreter {
         """;
 
         var input3 = """
-        void f7() {
-            return 1 + 2 / ((3 - 4) * 5) - 6;
+        void f() {
+       
         }      
         """;
 
