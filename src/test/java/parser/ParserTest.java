@@ -383,15 +383,6 @@ public class ParserTest {
 
 
     private Program parseProgram(List<Token> tokens) {
-        var lexer = new Lexer() {
-            private final List<Token> tk = tokens;
-            private int current = 0;
-            @Override
-            public Token nextToken() {
-                return tk.get(current++);
-            }
-        };
-
-        return new DefaultParser(lexer).parseProgram();
+        return new DefaultParser(new MockLexer(tokens)).parseProgram();
     }
 }
