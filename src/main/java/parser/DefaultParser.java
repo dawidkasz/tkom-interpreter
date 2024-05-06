@@ -9,14 +9,19 @@ import ast.expression.CastedExpression;
 import ast.expression.DictValue;
 import ast.expression.DictLiteral;
 import ast.expression.DivideExpression;
+import ast.expression.Equal;
 import ast.expression.Expression;
 import ast.expression.FloatLiteral;
+import ast.expression.GreaterThan;
+import ast.expression.GreaterThanOrEqual;
 import ast.expression.IntLiteral;
-import ast.expression.LessThanExpression;
+import ast.expression.LessThan;
+import ast.expression.LessThanOrEqual;
 import ast.expression.MinusExpression;
 import ast.expression.ModuloExpression;
 import ast.expression.MultiplyExpression;
 import ast.expression.NegatedExpression;
+import ast.expression.NotEqual;
 import ast.expression.Null;
 import ast.expression.NullableExpression;
 import ast.expression.OrExpression;
@@ -196,14 +201,11 @@ public class DefaultParser implements Parser {
 
         consumeToken();
 
-        Optional<Expression> returnExpression = parseExpression();
-        if (returnExpression.isEmpty()) {
-            throw new SyntaxError("Missing return expression");
-        }
+        Expression returnExpression = parseExpression().orElseThrow(() -> new SyntaxError("Missing return expression"));
 
         expectToken(TokenType.SEMICOLON, "Missing semicolon");
 
-        return Optional.of(new ReturnStatement(returnExpression.get()));
+        return Optional.of(new ReturnStatement(returnExpression));
     }
 
     // whileStatement = "while" "(" expression ")" statementBlock;
@@ -216,16 +218,14 @@ public class DefaultParser implements Parser {
 
         expectToken(TokenType.LEFT_ROUND_BRACKET, "Expected left round bracket after while keyword");
 
-        var expression = parseExpression();
-        if (expression.isEmpty()) {
-            throw new SyntaxError("Missing expression in while statement");
-        }
+        Expression expression = parseExpression()
+                .orElseThrow(() -> new SyntaxError("Missing expression in while statement"));
 
         expectToken(TokenType.RIGHT_ROUND_BRACKET, "Expected right round bracket after while keyword");
 
         var block = parseStatementBlock();
 
-        return Optional.of(new WhileStatement(expression.get(), block));
+        return Optional.of(new WhileStatement(expression, block));
     }
 
     // expression = andExpression {orOperator andExpression};
@@ -239,12 +239,10 @@ public class DefaultParser implements Parser {
 
         while (token.type() == TokenType.OR_OPERATOR) {
             consumeToken();
-            var rightLogicFactor = parseAndExpression();
-            if (rightLogicFactor.isEmpty()) {
-                throw new SyntaxError("Missing right side of or operator");
-            }
+            Expression rightLogicFactor = parseAndExpression()
+                    .orElseThrow(() -> new SyntaxError("Missing right side of or operator"));
 
-            leftLogicFactor = new OrExpression(leftLogicFactor, rightLogicFactor.get());
+            leftLogicFactor = new OrExpression(leftLogicFactor, rightLogicFactor);
         }
 
         return Optional.of(leftLogicFactor);
@@ -261,12 +259,10 @@ public class DefaultParser implements Parser {
 
         while (token.type() == TokenType.AND_OPERATOR) {
             consumeToken();
-            var rightLogicFactor = parseRelationExpression();
-            if (rightLogicFactor.isEmpty()) {
-                throw new SyntaxError("Missing right side of && operator");
-            }
+            var rightLogicFactor = parseRelationExpression()
+                    .orElseThrow(() -> new SyntaxError("Missing right side of && operator"));
 
-            leftLogicFactor = new AndExpression(leftLogicFactor, rightLogicFactor.get());
+            leftLogicFactor = new AndExpression(leftLogicFactor, rightLogicFactor);
         }
 
         return Optional.of(leftLogicFactor);
@@ -281,19 +277,37 @@ public class DefaultParser implements Parser {
 
         var leftLogicFactor = left.get();
 
-        if (!Set.of(TokenType.LESS_THAN_OPERATOR, TokenType.LESS_THAN_OR_EQUAL_OPERATOR, TokenType.GREATER_THAN_OPERATOR,
-                TokenType.GREATER_THAN_OR_EQUAL_OPERATOR, TokenType.EQUAL_OPERATOR, TokenType.NOT_EQUAL_OPERATOR).contains(token.type())) {
+        TokenType operatorTokenType = token.type();
+        if (!operatorTokenType.isRelationalOperator()) {
             return left;
         }
 
         consumeToken();
 
-        var rightLogicFactor = parseAdditiveExpression();
-        if (rightLogicFactor.isEmpty()) {
-            throw new SyntaxError("Missing right side of < operator");
-        }
+        Expression rightLogicFactor = parseAdditiveExpression()
+                .orElseThrow(() -> new SyntaxError("Missing right side of < operator"));
 
-        return Optional.of(new LessThanExpression(leftLogicFactor, rightLogicFactor.get()));
+        switch (operatorTokenType) {
+            case LESS_THAN_OPERATOR -> {
+                return Optional.of(new LessThan(leftLogicFactor, rightLogicFactor));
+            }
+            case LESS_THAN_OR_EQUAL_OPERATOR -> {
+                return Optional.of(new LessThanOrEqual(leftLogicFactor, rightLogicFactor));
+            }
+            case GREATER_THAN_OPERATOR -> {
+                return Optional.of(new GreaterThan(leftLogicFactor, rightLogicFactor));
+            }
+            case GREATER_THAN_OR_EQUAL_OPERATOR -> {
+                return Optional.of(new GreaterThanOrEqual(leftLogicFactor, rightLogicFactor));
+            }
+            case EQUAL_OPERATOR -> {
+                return Optional.of(new Equal(leftLogicFactor, rightLogicFactor));
+            }
+            case NOT_EQUAL_OPERATOR -> {
+                return Optional.of(new NotEqual(leftLogicFactor, rightLogicFactor));
+            }
+            default -> throw new SyntaxError("Unrecognized relational operator");
+        }
     }
 
     private Optional<Expression> parseAdditiveExpression() {
@@ -307,15 +321,14 @@ public class DefaultParser implements Parser {
         while (token.type() == TokenType.PLUS_OPERATOR || token.type() == TokenType.MINUS_OPERATOR) {
             TokenType tokenType = token.type();
             consumeToken();
-            var rightLogicFactor = parseMultiplicativeExpression();
-            if (rightLogicFactor.isEmpty()) {
-                throw new SyntaxError("Missing right side of + operator");
-            }
+
+            Expression rightLogicFactor = parseMultiplicativeExpression()
+                    .orElseThrow(() -> new SyntaxError("Missing right side of + operator"));
 
             if (tokenType == TokenType.PLUS_OPERATOR) {
-                leftLogicFactor = new PlusExpression(leftLogicFactor, rightLogicFactor.get());
+                leftLogicFactor = new PlusExpression(leftLogicFactor, rightLogicFactor);
             } else {
-                leftLogicFactor = new MinusExpression(leftLogicFactor, rightLogicFactor.get());
+                leftLogicFactor = new MinusExpression(leftLogicFactor, rightLogicFactor);
             }
         }
 
@@ -339,17 +352,15 @@ public class DefaultParser implements Parser {
             type = token.type();
 
             consumeToken();
-            var rightLogicFactor = parseNullableExpression();
-            if (rightLogicFactor.isEmpty()) {
-                throw new SyntaxError("Missing right side of * operator");
-            }
+            var rightLogicFactor = parseNullableExpression()
+                    .orElseThrow(() -> new SyntaxError("Missing right side of * operator"));
 
             if (type == TokenType.MULTIPLICATION_OPERATOR) {
-                leftLogicFactor = new MultiplyExpression(leftLogicFactor, rightLogicFactor.get());
+                leftLogicFactor = new MultiplyExpression(leftLogicFactor, rightLogicFactor);
             } else if (type == TokenType.DIVISION_OPERATOR ) {
-                leftLogicFactor = new DivideExpression(leftLogicFactor, rightLogicFactor.get());
+                leftLogicFactor = new DivideExpression(leftLogicFactor, rightLogicFactor);
             } else {
-                leftLogicFactor = new ModuloExpression(leftLogicFactor, rightLogicFactor.get());
+                leftLogicFactor = new ModuloExpression(leftLogicFactor, rightLogicFactor);
             }
         }
 
@@ -375,12 +386,10 @@ public class DefaultParser implements Parser {
     private Optional<Expression> parseNegatedExpression() {
         if (token.type() == TokenType.NEGATION_OPERATOR || token.type() == TokenType.MINUS_OPERATOR) {
             consumeToken();
-            var expression = parseCastedExpression();
-            if (expression.isEmpty()) {
-                throw new SyntaxError("Expected expression after negation operator");
-            }
+            Expression expression = parseCastedExpression()
+                    .orElseThrow(() -> new SyntaxError("Expected expression after negation operator"));
 
-            return Optional.of(new NegatedExpression(expression.get()));
+            return Optional.of(new NegatedExpression(expression));
         }
 
         return parseCastedExpression();

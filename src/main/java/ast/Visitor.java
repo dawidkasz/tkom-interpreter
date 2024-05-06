@@ -5,13 +5,18 @@ import ast.expression.CastedExpression;
 import ast.expression.DictValue;
 import ast.expression.DictLiteral;
 import ast.expression.DivideExpression;
+import ast.expression.Equal;
 import ast.expression.FloatLiteral;
+import ast.expression.GreaterThan;
+import ast.expression.GreaterThanOrEqual;
 import ast.expression.IntLiteral;
-import ast.expression.LessThanExpression;
+import ast.expression.LessThan;
+import ast.expression.LessThanOrEqual;
 import ast.expression.MinusExpression;
 import ast.expression.ModuloExpression;
 import ast.expression.MultiplyExpression;
 import ast.expression.NegatedExpression;
+import ast.expression.NotEqual;
 import ast.expression.Null;
 import ast.expression.NullableExpression;
 import ast.expression.OrExpression;
@@ -35,7 +40,7 @@ public interface Visitor {
     void visit(FloatLiteral floatLiteral);
     void visit(IntLiteral intLiteral);
     void visit(StringLiteral stringLiteral);
-    void visit(LessThanExpression lessThanExpression);
+    void visit(LessThan lessThan);
     void visit(MinusExpression minusExpression);
     void visit(ModuloExpression moduloExpression);
     void visit(MultiplyExpression multiplyExpression);
@@ -45,4 +50,9 @@ public interface Visitor {
     void visit(VariableValue variableValue);
     void visit(PlusExpression plusExpression);
     void visit(NullableExpression nullableExpression);
+    void visit(LessThanOrEqual lessThanOrEqual);
+    void visit(GreaterThan greaterThan);
+    void visit(GreaterThanOrEqual greaterThanOrEqual);
+    void visit(Equal equal);
+    void visit(NotEqual notEqual);
 }

@@ -54,7 +54,7 @@ public class Interpreter {
         }
         
         void fun3() {
-            return f(3, 4, 5+5-3) + y;
+            return f(3, 4, 5+5-3) == y;
         }
         
         dict[int,int] fun4() {

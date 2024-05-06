@@ -5,14 +5,19 @@ import ast.expression.CastedExpression;
 import ast.expression.DictValue;
 import ast.expression.DictLiteral;
 import ast.expression.DivideExpression;
+import ast.expression.Equal;
 import ast.expression.Expression;
 import ast.expression.FloatLiteral;
+import ast.expression.GreaterThan;
+import ast.expression.GreaterThanOrEqual;
 import ast.expression.IntLiteral;
-import ast.expression.LessThanExpression;
+import ast.expression.LessThan;
+import ast.expression.LessThanOrEqual;
 import ast.expression.MinusExpression;
 import ast.expression.ModuloExpression;
 import ast.expression.MultiplyExpression;
 import ast.expression.NegatedExpression;
+import ast.expression.NotEqual;
 import ast.expression.Null;
 import ast.expression.NullableExpression;
 import ast.expression.OrExpression;
@@ -209,11 +214,6 @@ public class AstPrinter implements Visitor {
     }
 
     @Override
-    public void visit(LessThanExpression lessThanExpression) {
-        visitBinOp("LessThan", lessThanExpression.left(), lessThanExpression.right());
-    }
-
-    @Override
     public void visit(MinusExpression minusExpression) {
         visitBinOp("Minus", minusExpression.left(), minusExpression.right());
     }
@@ -259,6 +259,36 @@ public class AstPrinter implements Visitor {
         withIndentation(() -> nullableExpression.expression().accept(this));
         print("\n");
         print(")");
+    }
+
+    @Override
+    public void visit(LessThan lessThan) {
+        visitBinOp("LessThan", lessThan.left(), lessThan.right());
+    }
+    
+    @Override
+    public void visit(LessThanOrEqual lessThanOrEqual) {
+        visitBinOp("LessThanOrEq", lessThanOrEqual.left(), lessThanOrEqual.right());
+    }
+
+    @Override
+    public void visit(GreaterThan greaterThan) {
+        visitBinOp("GreaterThan", greaterThan.left(), greaterThan.right());
+    }
+
+    @Override
+    public void visit(GreaterThanOrEqual greaterThanOrEqual) {
+        visitBinOp("GreaterThanOrEq", greaterThanOrEqual.left(), greaterThanOrEqual.right());
+    }
+
+    @Override
+    public void visit(Equal equal) {
+        visitBinOp("Eq", equal.left(), equal.right());
+    }
+
+    @Override
+    public void visit(NotEqual notEqual) {
+        visitBinOp("NotEq", notEqual.left(), notEqual.right());
     }
 
     private void visitBinOp(String opName, Expression left, Expression right) {
