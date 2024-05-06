@@ -43,7 +43,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 public class DefaultParser implements Parser {
     private final Lexer lexer;
@@ -71,7 +70,7 @@ public class DefaultParser implements Parser {
 
     // functionDefinition = functionReturnType identifier parameterList statementBlock;
     private Optional<FunctionDefinition> parseFunctionDefinition() {
-        if (!isFunctionReturnType(token.type())) {
+        if (!token.type().isFunctionReturnType()) {
             return Optional.empty();
         }
 
@@ -95,20 +94,19 @@ public class DefaultParser implements Parser {
     private List<Parameter> parseParameters() {
         List<Parameter> parameters = new ArrayList<>();
 
-        var parameter = parseParameter();
-        if (parameter.isEmpty()) {
+        Optional<Parameter> optionalParameter = parseParameter();
+        if (optionalParameter.isEmpty()) {
             return parameters;
         }
 
-        parameters.add(parameter.get());
+        Parameter parameter = optionalParameter.get();
+        parameters.add(parameter);
 
         while (token.type() == TokenType.COMMA) {
             consumeToken();
-            parameter = parseParameter();
-            if (parameter.isEmpty()) {
-                throw new SyntaxError("Expected parameter");
-            }
-            parameters.add(parameter.get());
+            parameter = parseParameter().orElseThrow(() -> new SyntaxError("Expected a parameter"));
+
+            parameters.add(parameter);
         }
 
         return parameters;
@@ -128,25 +126,25 @@ public class DefaultParser implements Parser {
 
     // returnType = simpleType | parametrizedType;
     private Optional<Type> parseType() {
-        if (token.type() == TokenType.VOID_KEYWORD) {
+        TokenType tokenType = token.type();
+
+        if (tokenType == TokenType.VOID_KEYWORD) {
             consumeToken();
             return Optional.of(new VoidType());
         }
 
-        if (isSimpleType(token.type())) {
+        if (tokenType.isSimpleType()) {
             var type = Type.simpleType(token.type());
             consumeToken();
             return Optional.of(type);
         }
 
-        if (isCollectionType(token.type())) {
-            var tokenType = token.type();
-
+        if (tokenType.isCollectionType()) {
             consumeToken();
 
             expectToken(TokenType.LEFT_SQUARE_BRACKET, "Expected left square bracket");
 
-            if (!isSimpleType(token.type())) {
+            if (!token.type().isSimpleType()) {
                 throw new SyntaxError("Expected simple returnType");
             }
             var paramType1 = Type.simpleType(token.type());
@@ -155,7 +153,7 @@ public class DefaultParser implements Parser {
 
             expectToken(TokenType.COMMA, "Expected comma");
 
-            if (!isSimpleType(token.type())) {
+            if (!token.type().isSimpleType()) {
                 throw new SyntaxError("Expected simple returnType");
             }
             var paramType2 = Type.simpleType(token.type());
@@ -405,7 +403,7 @@ public class DefaultParser implements Parser {
         if (token.type() == TokenType.AS_KEYWORD) {
             consumeToken();
 
-            if (!isSimpleType(token.type())) {
+            if (!token.type().isSimpleType()) {
                 throw new SyntaxError("Expected simple type after as keyword");
             }
             Type type = Type.simpleType(token.type());
@@ -427,14 +425,11 @@ public class DefaultParser implements Parser {
         if (token.type() == TokenType.LEFT_SQUARE_BRACKET) {
             consumeToken();
 
-            Optional<Expression> dictKey = parseExpression();
-            if (dictKey.isEmpty()) {
-                throw new SyntaxError("Missing dict key");
-            }
+            Expression dictKey = parseExpression().orElseThrow(() -> new SyntaxError("Missing dict key"));
 
             expectToken(TokenType.RIGHT_SQUARE_BRACKET, "Missing right square bracket in dict key retrieval");
 
-            return Optional.of(new DictValue(expression.get(), dictKey.get()));
+            return Optional.of(new DictValue(expression.get(), dictKey));
         }
 
         return expression;
@@ -445,14 +440,11 @@ public class DefaultParser implements Parser {
         if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
             consumeToken();
 
-            var expression = parseExpression();
-            if (expression.isEmpty()) {
-                throw new SyntaxError("Missing expression inside brackets");
-            }
+            Expression expression = parseExpression().orElseThrow(() -> new SyntaxError("Missing expression inside brackets"));
 
             expectToken(TokenType.RIGHT_ROUND_BRACKET, "Missing right round bracket");
 
-            return expression;
+            return Optional.of(expression);
         }
 
         if (token.type() == TokenType.INT_LITERAL) {
@@ -526,39 +518,31 @@ public class DefaultParser implements Parser {
 
     // dictLiteralKeyValuePair = expression ":" expression;
     private AbstractMap.SimpleImmutableEntry<Expression, Expression> parseDictLiteralKeyValuePair() {
-        Optional<Expression> key = parseExpression();
-        if (key.isEmpty()) {
-            throw new SyntaxError("Missing key in dict literal");
-        }
+        Expression key = parseExpression().orElseThrow(() -> new SyntaxError("Missing key in dict literal"));
 
         expectToken(TokenType.COLON, "Missing colon after key in dict literal");
 
-        Optional<Expression> value = parseExpression();
-        if (value.isEmpty()) {
-            throw new SyntaxError("Missing value in dict literal");
-        }
+        Expression value = parseExpression().orElseThrow(() -> new SyntaxError("Missing value in dict literal"));
 
-        return new AbstractMap.SimpleImmutableEntry<>(key.get(), value.get());
+        return new AbstractMap.SimpleImmutableEntry<>(key, value);
     }
 
     // arguments = [expression, {"," expression}];
     private List<Expression> parseArguments() {
         List<Expression> arguments = new ArrayList<>();
 
-        var argument = parseExpression();
-        if (argument.isEmpty()) {
+        Optional<Expression> optionalArgument = parseExpression();
+        if (optionalArgument.isEmpty()) {
             return arguments;
         }
 
-        arguments.add(argument.get());
+        Expression argument = optionalArgument.get();
+        arguments.add(argument);
 
         while (token.type() == TokenType.COMMA) {
             consumeToken();
-            argument = parseExpression();
-            if (argument.isEmpty()) {
-                throw new SyntaxError("Expected argument after comma");
-            }
-            arguments.add(argument.get());
+            argument = parseExpression().orElseThrow(() -> new SyntaxError("Expected argument after comma"));
+            arguments.add(argument);
         }
 
         return arguments;
@@ -576,24 +560,6 @@ public class DefaultParser implements Parser {
         var currentToken = token;
         consumeToken();
         return currentToken;
-    }
-
-    private boolean isSimpleType(TokenType tokenType) {
-        return tokenType == TokenType.INT_KEYWORD ||
-                tokenType == TokenType.FLOAT_KEYWORD ||
-                tokenType == TokenType.STRING_KEYWORD;
-    }
-
-    private boolean isCollectionType(TokenType tokenType) {
-        return tokenType == TokenType.DICT_KEYWORD;
-    }
-
-    private boolean isType(TokenType tokenType) {
-        return isSimpleType(tokenType) || isCollectionType(tokenType);
-    }
-
-    private boolean isFunctionReturnType(TokenType tokenType) {
-        return isType(tokenType) || tokenType == TokenType.VOID_KEYWORD;
     }
 
     public static class SyntaxError extends RuntimeException {
