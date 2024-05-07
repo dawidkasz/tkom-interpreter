@@ -113,17 +113,7 @@ public class DefaultParser implements Parser {
             throw new SyntaxError("Variable can't be of type void");
         }
 
-        if (token.type() == TokenType.ASSIGNMENT) {
-            consumeToken();
-            var expression = parseExpression().orElseThrow(() -> new SyntaxError("Missing expression"));
-            expectToken(TokenType.SEMICOLON, "Expected semicolon");
-
-            return Optional.of(new VariableDeclaration(type, varName, expression, position));
-        }
-
-        expectToken(TokenType.SEMICOLON, "Expected semicolon");
-
-        return Optional.of(new VariableDeclaration(type, varName, Null.getInstance(), position));
+        return Optional.of(parsePartOfVariableDeclarationAfterIdentifier(type, varName, position));
     }
 
     // parameters = [parameter, {"," parameter}];
@@ -269,19 +259,22 @@ public class DefaultParser implements Parser {
         var identifier = expectToken(TokenType.IDENTIFIER, "Expected identifier");
         var varName = (String) identifier.value();
 
+        return Optional.of(parsePartOfVariableDeclarationAfterIdentifier(type.get(), varName, position));
+    }
+
+    private VariableDeclaration parsePartOfVariableDeclarationAfterIdentifier(Type type, String varName, Position position) {
         if (token.type() == TokenType.ASSIGNMENT) {
             consumeToken();
             var expression = parseExpression().orElseThrow(() -> new SyntaxError("Missing expression"));
             expectToken(TokenType.SEMICOLON, "Expected semicolon");
 
-            return Optional.of(new VariableDeclaration(type.get(), varName, expression, position));
+            return new VariableDeclaration(type, varName, expression, position);
         }
 
         expectToken(TokenType.SEMICOLON, "Expected semicolon");
 
-        return Optional.of(new VariableDeclaration(type.get(), varName, Null.getInstance(), position));
+        return new VariableDeclaration(type, varName, Null.getInstance(), position);
     }
-
 
     // assignmentOrFunctionCall = (identifier "=" expression ";") |
     //         (identifier "[" expression "]" "=" expression ";") |
