@@ -42,12 +42,17 @@ public class AstPrinter implements Visitor {
     @Override
     public void visit(Program program) {
         print("Program [\n");
-        withIndentation(() ->
+        withIndentation(() -> {
+            program.globalVariables().forEach((varName, varDec) -> {
+                varDec.accept(this);
+                print("\n");
+            });
+
             program.functions().forEach((funName, funDef) -> {
                 funDef.accept(this);
                 print("\n");
-            })
-        );
+            });
+        });
         print("]");
     }
 

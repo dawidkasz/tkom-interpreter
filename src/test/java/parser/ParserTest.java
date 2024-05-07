@@ -9,6 +9,7 @@ import ast.expression.CastedExpression;
 import ast.expression.DictLiteral;
 import ast.expression.DivideExpression;
 import ast.expression.Equal;
+import ast.expression.FloatLiteral;
 import ast.expression.GreaterThan;
 import ast.expression.GreaterThanOrEqual;
 import ast.expression.IntLiteral;
@@ -159,6 +160,46 @@ public class ParserTest {
         assertThatExceptionOfType(DefaultParser.SyntaxError.class)
                 .isThrownBy(() -> parseProgram(tokens))
                 .withMessage("Expected right parentheses at position(line=1, column=5)");
+    }
+
+    @Test
+    void should_parse_global_variable_definition() {
+        /*
+        given:
+
+        float x = 1.0f;
+        */
+
+        var tokens = List.of(getToken(FLOAT_KEYWORD), getToken(IDENTIFIER, "x"), getToken(ASSIGNMENT),
+                getToken(FLOAT_LITERAL, 1.0f), getToken(SEMICOLON), Token.eof());
+
+        // when
+        var program = parseProgram(tokens);
+
+        // then
+        assertThat(program.functions()).hasSize(0);
+        assertThat(program.globalVariables()).hasSize(1);
+
+        assertThat(program.globalVariables().get("x"))
+                .extracting(v -> tuple(v.type(), v.name(), v.value()))
+                .matches(t -> t.equals(tuple(new FloatType(), "x", new FloatLiteral(1.0f))));
+    }
+
+    @Test
+    void should_throw_syntax_error_when_global_variable_definition_with_missing_expression() {
+        /*
+        given:
+
+        float x =;
+        */
+
+        var tokens = List.of(getToken(FLOAT_KEYWORD), getToken(IDENTIFIER, "x"),
+                getToken(ASSIGNMENT), getToken(SEMICOLON), Token.eof());
+
+        // then
+        assertThatExceptionOfType(DefaultParser.SyntaxError.class)
+                .isThrownBy(() -> parseProgram(tokens))
+                .withMessage("Missing expression");
     }
 
     @Test

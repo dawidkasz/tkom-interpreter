@@ -1,5 +1,6 @@
 package parser;
 
+import ast.Declaration;
 import ast.FunctionCall;
 import ast.FunctionDefinition;
 import ast.Parameter;
@@ -62,22 +63,32 @@ public class DefaultParser implements Parser {
         consumeToken();
     }
 
-    // program = {functionDefinition};
+    // program = {functionDefinition | variableDeclaration};
     @Override
     public Program parseProgram() {
         Map<String, FunctionDefinition> functions = new HashMap<>();
+        Map<String, VariableDeclaration> globalVariables = new HashMap<>();
 
-        var fun = this.parseFunctionDefinition();
-        while (fun.isPresent()) {
-            functions.put(fun.get().name(), fun.get());
-            fun = this.parseFunctionDefinition();
+        var declaration = this.parseFunctionDefinitionOrGlobalVariableDeclaration();
+        while (declaration.isPresent()) {
+
+            if (declaration.get() instanceof FunctionDefinition fun) {
+                functions.put(fun.name(), fun);
+            } else if (declaration.get() instanceof VariableDeclaration globalVar) {
+                globalVariables.put(globalVar.name(), globalVar);
+            } else {
+                throw new IllegalStateException("Unrecognized declaration type");
+            }
+
+            declaration = this.parseFunctionDefinitionOrGlobalVariableDeclaration();
         }
 
-        return new Program(functions);
+        return new Program(functions, globalVariables);
     }
 
-    // functionDefinition = functionReturnType identifier parameterList statementBlock;
-    private Optional<FunctionDefinition> parseFunctionDefinition() {
+    // functionDefinition = functionReturnType identifier parameterList statementBlock |
+    //                      type identifier ["=" expression] ";";;
+    private Optional<Declaration> parseFunctionDefinitionOrGlobalVariableDeclaration() {
         if (!token.type().isFunctionReturnType()) {
             return Optional.empty();
         }
@@ -87,17 +98,32 @@ public class DefaultParser implements Parser {
         Type type = parseType().orElseThrow(() -> new SyntaxError("Expected function return type"));
 
         Token t = expectToken(TokenType.IDENTIFIER, "Expected an identifier");
-        var name = (String) t.value();
+        var varName = (String) t.value();
 
-        expectToken(TokenType.LEFT_ROUND_BRACKET, "Expected left parentheses");
+        if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
+            consumeToken();
 
-        var params = parseParameters();
+            var params = parseParameters();
+            expectToken(TokenType.RIGHT_ROUND_BRACKET, "Expected right parentheses");
+            var block = parseStatementBlock();
+            return Optional.of(new FunctionDefinition(type, varName, params, block, position));
+        }
 
-        expectToken(TokenType.RIGHT_ROUND_BRACKET, "Expected right parentheses");
+        if (type.equals(new VoidType())) {
+            throw new SyntaxError("Variable can't be of type void");
+        }
 
-        var block = parseStatementBlock();
+        if (token.type() == TokenType.ASSIGNMENT) {
+            consumeToken();
+            var expression = parseExpression().orElseThrow(() -> new SyntaxError("Missing expression"));
+            expectToken(TokenType.SEMICOLON, "Expected semicolon");
 
-        return Optional.of(new FunctionDefinition(type, name, params, block, position));
+            return Optional.of(new VariableDeclaration(type, varName, expression, position));
+        }
+
+        expectToken(TokenType.SEMICOLON, "Expected semicolon");
+
+        return Optional.of(new VariableDeclaration(type, varName, Null.getInstance(), position));
     }
 
     // parameters = [parameter, {"," parameter}];
@@ -255,6 +281,7 @@ public class DefaultParser implements Parser {
 
         return Optional.of(new VariableDeclaration(type.get(), varName, Null.getInstance(), position));
     }
+
 
     // assignmentOrFunctionCall = (identifier "=" expression ";") |
     //         (identifier "[" expression "]" "=" expression ";") |

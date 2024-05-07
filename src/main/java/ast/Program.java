@@ -1,11 +1,14 @@
 package ast;
 
+import ast.statement.VariableDeclaration;
+
 import java.util.HashMap;
 import java.util.Map;
 
-public record Program(Map<String, FunctionDefinition> functions) implements Visitable {
-    public Program(Map<String, FunctionDefinition> functions) {
+public record Program(Map<String, FunctionDefinition> functions, Map<String, VariableDeclaration> globalVariables) implements Visitable {
+    public Program(Map<String, FunctionDefinition> functions, Map<String, VariableDeclaration> globalVariables) {
         this.functions = new HashMap<>(functions);
+        this.globalVariables = new HashMap<>(globalVariables);
     }
 
     @Override

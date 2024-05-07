@@ -9,6 +9,7 @@ import ast.expression.IntLiteral;
 import ast.expression.LessThan;
 import ast.expression.MinusExpression;
 import ast.expression.MultiplyExpression;
+import ast.expression.Null;
 import ast.expression.PlusExpression;
 import ast.expression.VariableValue;
 import ast.statement.ReturnStatement;
@@ -32,7 +33,7 @@ public class ParserTest {
     @Test
     void should_parse_program_ast() {
         // given
-        String input = """
+        String input = """        
         int sq(int x) {
             return x * x;
         }
@@ -44,12 +45,23 @@ public class ParserTest {
                 x = x + 1;
             }
         }
+        
+        int globalX;
         """;
 
         //when
         Program program = parseProgram(input);
 
         // then
+        assertThat(program.globalVariables()).hasSize(1);
+        assertThat(program.globalVariables().get("globalX"))
+                .matches(v -> v.equals(new VariableDeclaration(
+                        new IntType(),
+                        "globalX",
+                        Null.getInstance(),
+                        new Position(13, 1)
+                )));
+
         assertThat(program.functions()).hasSize(2);
 
         assertThat(program.functions().get("sq"))

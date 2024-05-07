@@ -78,6 +78,8 @@ public class Interpreter {
         """;
 
         var input3 = """
+        int globalX = 1;
+        
         void f() {
             if (x == 1) {
                 a();

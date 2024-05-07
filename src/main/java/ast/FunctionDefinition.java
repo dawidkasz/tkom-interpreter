@@ -12,7 +12,7 @@ public record FunctionDefinition(
         List<Parameter> parameters,
         List<Statement> statementBlock,
         Position position
-) implements Visitable {
+) implements Visitable, Declaration {
     @Override
     public void accept(Visitor visitor) {
         visitor.visit(this);
