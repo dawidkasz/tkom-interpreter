@@ -35,6 +35,7 @@ import ast.statement.IfStatement;
 import ast.statement.ReturnStatement;
 import ast.statement.Statement;
 import ast.statement.VariableAssignment;
+import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
 import ast.type.SimpleType;
 import ast.type.Type;
@@ -45,7 +46,6 @@ import lexer.TokenType;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -226,8 +226,27 @@ public class DefaultParser implements Parser {
         return Optional.of(new IfStatement(condition, ifBlock, null));
     }
 
+    // variableDeclaration = type identifier ["=" expression] ";";
     private Optional<Statement> parseVariableDeclaration() {
-        return Optional.empty();
+        Optional<Type> type = parseType();
+        if (type.isEmpty()) {
+            return Optional.empty();
+        }
+
+        var identifier = expectToken(TokenType.IDENTIFIER, "Expected identifier");
+        var varName = (String) identifier.value();
+
+        if (token.type() == TokenType.ASSIGNMENT) {
+            consumeToken();
+            var expression = parseExpression().orElseThrow(() -> new SyntaxError("Missing expression"));
+            expectToken(TokenType.SEMICOLON, "Expected semicolon");
+
+            return Optional.of(new VariableDeclaration(type.get(), varName, expression));
+        }
+
+        expectToken(TokenType.SEMICOLON, "Expected semicolon");
+
+        return Optional.of(new VariableDeclaration(type.get(), varName, Null.getInstance()));
     }
 
     // assignmentOrFunctionCall = (identifier "=" expression ";") |

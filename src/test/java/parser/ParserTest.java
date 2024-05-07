@@ -28,6 +28,7 @@ import ast.expression.VariableValue;
 import ast.statement.ForeachStatement;
 import ast.statement.IfStatement;
 import ast.statement.ReturnStatement;
+import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
 import ast.type.DictType;
 import ast.type.FloatType;
@@ -39,6 +40,7 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -60,6 +62,7 @@ import static lexer.TokenType.INT_KEYWORD;
 import static lexer.TokenType.INT_LITERAL;
 import static lexer.TokenType.LEFT_CURLY_BRACKET;
 import static lexer.TokenType.LEFT_ROUND_BRACKET;
+import static lexer.TokenType.LEFT_SQUARE_BRACKET;
 import static lexer.TokenType.LESS_THAN_OPERATOR;
 import static lexer.TokenType.LESS_THAN_OR_EQUAL_OPERATOR;
 import static lexer.TokenType.MINUS_OPERATOR;
@@ -72,6 +75,7 @@ import static lexer.TokenType.OR_OPERATOR;
 import static lexer.TokenType.PLUS_OPERATOR;
 import static lexer.TokenType.RIGHT_CURLY_BRACKET;
 import static lexer.TokenType.RIGHT_ROUND_BRACKET;
+import static lexer.TokenType.RIGHT_SQUARE_BRACKET;
 import static lexer.TokenType.SEMICOLON;
 import static lexer.TokenType.STRING_KEYWORD;
 import static lexer.TokenType.STRING_LITERAL;
@@ -419,6 +423,56 @@ public class ParserTest {
                         List.of(new FunctionCall("a", Collections.emptyList())),
                         List.of(new FunctionCall("b", Collections.emptyList()))
                 )));
+    }
+
+    @Test
+    void should_parse_variable_declaration() {
+        /*
+        given:
+        dict[string, int] some_dict = {"a": 1};
+        int x1 = null;
+        float x2;
+        */
+
+        List<Token> body = Stream.of(
+                List.of(getToken(DICT_KEYWORD), getToken(LEFT_SQUARE_BRACKET), getToken(STRING_KEYWORD),
+                        getToken(COMMA), getToken(INT_KEYWORD), getToken(RIGHT_SQUARE_BRACKET)),
+                List.of(getToken(IDENTIFIER, "some_dict"), getToken(ASSIGNMENT), getToken(LEFT_CURLY_BRACKET),
+                        getToken(STRING_LITERAL, "a"), getToken(COLON), getToken(INT_LITERAL, 1),
+                        getToken(RIGHT_CURLY_BRACKET), getToken(SEMICOLON)),
+                List.of(getToken(INT_KEYWORD), getToken(IDENTIFIER, "x1"), getToken(ASSIGNMENT),
+                        getToken(NULL_KEYWORD), getToken(SEMICOLON)),
+                List.of(getToken(FLOAT_KEYWORD), getToken(IDENTIFIER, "x2"), getToken(SEMICOLON))
+        ).flatMap(Collection::stream).toList();
+
+        var tokens = TokenFactory.program(List.of(
+                TokenFactory.function(VOID_KEYWORD, "f", List.of(), body)
+        ));
+
+        // when
+        var program = parseProgram(tokens);
+
+        // then
+        assertThat(program.functions().get("f").statementBlock())
+                .element(0)
+                .asInstanceOf(InstanceOfAssertFactories.type(VariableDeclaration.class))
+                .matches(s -> s.name().equals("some_dict"))
+                .matches(s -> s.type().equals(new DictType(new StringType(), new IntType())))
+                .matches(s -> s.value().equals(new DictLiteral(Map.of(new StringLiteral("a"), new IntLiteral(1)))));
+
+        assertThat(program.functions().get("f").statementBlock())
+                .element(1)
+                .asInstanceOf(InstanceOfAssertFactories.type(VariableDeclaration.class))
+                .matches(s -> s.name().equals("x1"))
+                .matches(s -> s.type().equals(new IntType()))
+                .matches(s -> s.value().equals(Null.getInstance()));
+
+        assertThat(program.functions().get("f").statementBlock())
+                .element(2)
+                .asInstanceOf(InstanceOfAssertFactories.type(VariableDeclaration.class))
+                .matches(s -> s.name().equals("x2"))
+                .matches(s -> s.type().equals(new FloatType()))
+                .matches(s -> s.value().equals(Null.getInstance()));
     }
 
 

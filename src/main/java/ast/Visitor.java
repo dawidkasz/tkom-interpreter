@@ -29,6 +29,7 @@ import ast.statement.ForeachStatement;
 import ast.statement.IfStatement;
 import ast.statement.ReturnStatement;
 import ast.statement.VariableAssignment;
+import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
 
 public interface Visitor {
@@ -65,4 +66,5 @@ public interface Visitor {
     void visit(Equal equal);
     void visit(NotEqual notEqual);
     void visit(UnaryMinusExpression unaryMinusExpression);
+    void visit(VariableDeclaration variableDeclaration);
 }

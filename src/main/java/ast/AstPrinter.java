@@ -30,6 +30,7 @@ import ast.statement.ForeachStatement;
 import ast.statement.IfStatement;
 import ast.statement.ReturnStatement;
 import ast.statement.VariableAssignment;
+import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
 
 public class AstPrinter implements Visitor {
@@ -337,6 +338,18 @@ public class AstPrinter implements Visitor {
     @Override
     public void visit(UnaryMinusExpression unaryMinusExpression) {
         visitUnaryOp("UnaryMinus", unaryMinusExpression.expression());
+    }
+
+    @Override
+    public void visit(VariableDeclaration variableDeclaration) {
+        print("DeclareVar(\n");
+        withIndentation(() -> {
+            print(String.format("name=%s\n", variableDeclaration.name()));
+            print("value=");
+            withoutIndentationForNextLine(() -> variableDeclaration.value().accept(this));
+            print("\n");
+        });
+        print(")");
     }
 
     @Override
