@@ -2,17 +2,18 @@ package ast.statement;
 
 import ast.Visitor;
 import ast.expression.Expression;
+import lexer.Position;
 
-import java.util.Collections;
 import java.util.List;
 
 public record IfStatement(
         Expression condition,
         List<Statement> ifBlock,
-        List<Statement> elseBlock
+        List<Statement> elseBlock,
+        Position position
 ) implements Statement {
-    public IfStatement(Expression condition, List<Statement> ifBlock) {
-        this(condition, ifBlock, Collections.emptyList());
+    public IfStatement(Expression condition, List<Statement> ifBlock, Position position) {
+        this(condition, ifBlock, null, position);
     }
 
     @Override

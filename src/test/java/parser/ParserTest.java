@@ -35,6 +35,7 @@ import ast.type.FloatType;
 import ast.type.IntType;
 import ast.type.StringType;
 import ast.type.VoidType;
+import lexer.Position;
 import lexer.Token;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
@@ -166,13 +167,14 @@ public class ParserTest {
                         new MinusExpression(
                                 new PlusExpression(
                                         new FunctionCall("fun", List.of(
-                                                new FunctionCall("fun2", List.of(new IntLiteral(1))),
+                                                new FunctionCall("fun2", List.of(new IntLiteral(1)), new Position(0, 0)),
                                                 new StringLiteral("xyz")
-                                        )),
+                                        ), new Position(0, 0)),
                                         new IntLiteral(9)
                                 ),
                                 new VariableValue("x")
-                        )
+                        ),
+                        new Position(0, 0)
                 ));
     }
 
@@ -217,7 +219,8 @@ public class ParserTest {
                                         )
                                 ),
                                 new IntLiteral(6)
-                        )
+                        ),
+                        new Position(0, 0)
                 ));
     }
 
@@ -252,7 +255,8 @@ public class ParserTest {
                                         new NotEqual(new VariableValue("y"), new IntLiteral(9)),
                                         new LessThan(new VariableValue("x"), new IntLiteral(10))
                                 )
-                        )
+                        ),
+                        new Position(0, 0)
                 ));
     }
 
@@ -281,7 +285,8 @@ public class ParserTest {
                 .isEqualTo(new ReturnStatement(
                         new UnaryMinusExpression(
                                 new CastedExpression(new StringLiteral("1"), new IntType())
-                        )
+                        ),
+                        new Position(0, 0)
                 ));
     }
 
@@ -307,10 +312,13 @@ public class ParserTest {
         assertThat(program.functions().get("f").statementBlock())
                 .hasSize(1)
                 .first()
-                .isEqualTo(new ReturnStatement(new NullableExpression(new GreaterThanOrEqual(
-                        new IntLiteral(1),
-                        Null.getInstance()
-                ))));
+                .isEqualTo(new ReturnStatement(
+                        new NullableExpression(new GreaterThanOrEqual(
+                                new IntLiteral(1),
+                                Null.getInstance()
+                        )),
+                        new Position(0, 0)
+                ));
     }
 
     @Test
@@ -403,8 +411,8 @@ public class ParserTest {
         */
 
         var condition = List.of(getToken(IDENTIFIER, "x"), getToken(GREATER_THAN_OPERATOR), getToken(STRING_LITERAL, "abc"));
-        var ifBody = List.of(getToken(IDENTIFIER, "a"), getToken(LEFT_ROUND_BRACKET), getToken(RIGHT_ROUND_BRACKET), getToken(SEMICOLON));
-        var elseBody = List.of(getToken(IDENTIFIER, "b"), getToken(LEFT_ROUND_BRACKET), getToken(RIGHT_ROUND_BRACKET), getToken(SEMICOLON));
+        var ifBody = List.of(getToken(IDENTIFIER, "a", new Position(2, 4)), getToken(LEFT_ROUND_BRACKET), getToken(RIGHT_ROUND_BRACKET), getToken(SEMICOLON));
+        var elseBody = List.of(getToken(IDENTIFIER, "b", new Position(4, 4)), getToken(LEFT_ROUND_BRACKET), getToken(RIGHT_ROUND_BRACKET), getToken(SEMICOLON));
 
         var tokens = TokenFactory.program(List.of(
                 TokenFactory.function(VOID_KEYWORD, "f", List.of(), TokenFactory.ifElseStatement(condition, ifBody, elseBody))
@@ -420,8 +428,8 @@ public class ParserTest {
                 .matches(s -> s.condition().equals(new GreaterThan(new VariableValue("x"), new StringLiteral("abc"))))
                 .extracting(s -> tuple(s.ifBlock(), s.elseBlock()))
                 .matches(t -> t.equals(tuple(
-                        List.of(new FunctionCall("a", Collections.emptyList())),
-                        List.of(new FunctionCall("b", Collections.emptyList()))
+                        List.of(new FunctionCall("a", Collections.emptyList(), new Position(2, 4))),
+                        List.of(new FunctionCall("b", Collections.emptyList(), new Position(4, 4)))
                 )));
     }
 

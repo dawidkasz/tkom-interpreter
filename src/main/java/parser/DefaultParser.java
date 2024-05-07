@@ -81,6 +81,8 @@ public class DefaultParser implements Parser {
             return Optional.empty();
         }
 
+        var position = token.position();
+
         Type type = parseType().orElseThrow(() -> new SyntaxError("Expected function return type"));
 
         Token t = expectToken(TokenType.IDENTIFIER, "Expected an identifier");
@@ -94,7 +96,7 @@ public class DefaultParser implements Parser {
 
         var block = parseStatementBlock();
 
-        return Optional.of(new FunctionDefinition(type, name, params, block));
+        return Optional.of(new FunctionDefinition(type, name, params, block, position));
     }
 
     // parameters = [parameter, {"," parameter}];
@@ -209,6 +211,8 @@ public class DefaultParser implements Parser {
             return Optional.empty();
         }
 
+        var position = token.position();
+
         consumeToken();
 
         expectToken(TokenType.LEFT_ROUND_BRACKET, "Expected left round bracket");
@@ -220,10 +224,10 @@ public class DefaultParser implements Parser {
         if (token.type() == TokenType.ELSE_KEYWORD) {
             consumeToken();
             List<Statement> elseBlock = parseStatementBlock();
-            return Optional.of(new IfStatement(condition, ifBlock, elseBlock));
+            return Optional.of(new IfStatement(condition, ifBlock, elseBlock, position));
         }
 
-        return Optional.of(new IfStatement(condition, ifBlock, null));
+        return Optional.of(new IfStatement(condition, ifBlock, position));
     }
 
     // variableDeclaration = type identifier ["=" expression] ";";
@@ -233,6 +237,7 @@ public class DefaultParser implements Parser {
             return Optional.empty();
         }
 
+        var position = token.position();
         var identifier = expectToken(TokenType.IDENTIFIER, "Expected identifier");
         var varName = (String) identifier.value();
 
@@ -241,12 +246,12 @@ public class DefaultParser implements Parser {
             var expression = parseExpression().orElseThrow(() -> new SyntaxError("Missing expression"));
             expectToken(TokenType.SEMICOLON, "Expected semicolon");
 
-            return Optional.of(new VariableDeclaration(type.get(), varName, expression));
+            return Optional.of(new VariableDeclaration(type.get(), varName, expression, position));
         }
 
         expectToken(TokenType.SEMICOLON, "Expected semicolon");
 
-        return Optional.of(new VariableDeclaration(type.get(), varName, Null.getInstance()));
+        return Optional.of(new VariableDeclaration(type.get(), varName, Null.getInstance(), position));
     }
 
     // assignmentOrFunctionCall = (identifier "=" expression ";") |
@@ -258,6 +263,7 @@ public class DefaultParser implements Parser {
         }
 
         String identifierName = (String) token.value();
+        var position = token.position();
 
         consumeToken();
 
@@ -266,14 +272,14 @@ public class DefaultParser implements Parser {
             List<Expression> arguments = parseArguments();
             expectToken(TokenType.RIGHT_ROUND_BRACKET, "Missing right round bracket");
             expectToken(TokenType.SEMICOLON, "Expected semicolon");
-            return Optional.of(new FunctionCall(identifierName, arguments));
+            return Optional.of(new FunctionCall(identifierName, arguments, position));
         }
 
         if (token.type() == TokenType.ASSIGNMENT) {
             consumeToken();
             Expression expression = parseExpression().orElseThrow(() -> new SyntaxError("Expected expression"));
             expectToken(TokenType.SEMICOLON, "Expected semicolon");
-            return Optional.of(new VariableAssignment(identifierName, expression));
+            return Optional.of(new VariableAssignment(identifierName, expression, position));
         }
 
         if (token.type() == TokenType.LEFT_SQUARE_BRACKET) {
@@ -287,7 +293,7 @@ public class DefaultParser implements Parser {
 
             expectToken(TokenType.SEMICOLON, "Expected semicolon");
 
-            return Optional.of(new DictAssignment(identifierName, key, value));
+            return Optional.of(new DictAssignment(identifierName, key, value, position));
         }
 
         throw new SyntaxError("Can't parse assignment or function call");
@@ -298,6 +304,8 @@ public class DefaultParser implements Parser {
         if (token.type() != TokenType.WHILE_KEYWORD) {
             return Optional.empty();
         }
+
+        var position = token.position();
 
         consumeToken();
 
@@ -310,7 +318,7 @@ public class DefaultParser implements Parser {
 
         var block = parseStatementBlock();
 
-        return Optional.of(new WhileStatement(expression, block));
+        return Optional.of(new WhileStatement(expression, block, position));
     }
 
     // foreachStatement = "foreach" "(" simpleType identifier ":" expression ")" statementBlock;
@@ -318,6 +326,8 @@ public class DefaultParser implements Parser {
         if (token.type() != TokenType.FOREACH_KEYWORD) {
             return Optional.empty();
         }
+
+        var position = token.position();
 
         consumeToken();
 
@@ -340,7 +350,7 @@ public class DefaultParser implements Parser {
 
         var block = parseStatementBlock();
 
-        return Optional.of(new ForeachStatement((SimpleType) type, (String) identifier.value(), iterable, block));
+        return Optional.of(new ForeachStatement((SimpleType) type, (String) identifier.value(), iterable, block, position));
     }
 
     // returnStatement = "return" expression ";";
@@ -349,13 +359,15 @@ public class DefaultParser implements Parser {
             return Optional.empty();
         }
 
+        var position = token.position();
+
         consumeToken();
 
         Expression returnExpression = parseExpression().orElseThrow(() -> new SyntaxError("Missing return expression"));
 
         expectToken(TokenType.SEMICOLON, "Missing semicolon");
 
-        return Optional.of(new ReturnStatement(returnExpression));
+        return Optional.of(new ReturnStatement(returnExpression, position));
     }
 
     // expression = andExpression {orOperator andExpression};
@@ -577,6 +589,8 @@ public class DefaultParser implements Parser {
 
     // simpleExpression = identifier | literal | "(" expression ")" | functionCallAsExpression;
     private Optional<Expression> parseSimpleExpression() {
+        var position = token.position();
+
         if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
             consumeToken();
 
@@ -623,7 +637,7 @@ public class DefaultParser implements Parser {
                 List<Expression> arguments = parseArguments();
                 expectToken(TokenType.RIGHT_ROUND_BRACKET, "Missing right round bracket in function call");
 
-                return Optional.of(new FunctionCall(identifierName, arguments));
+                return Optional.of(new FunctionCall(identifierName, arguments, position));
             }
 
             return Optional.of(new VariableValue(identifierName));

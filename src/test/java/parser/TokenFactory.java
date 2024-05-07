@@ -136,8 +136,12 @@ public class TokenFactory {
                 .collect(Collectors.toList());
     }
 
+    public static Token getToken(TokenType tokenType, Object value, Position position) {
+        return new Token(tokenType, position, value);
+    }
+
     public static Token getToken(TokenType tokenType, Object value) {
-        return new Token(tokenType, new Position(0, 0), value);
+        return getToken(tokenType, value, new Position(0, 0));
     }
 
     public static Token getToken(TokenType tokenType) {
