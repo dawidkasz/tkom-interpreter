@@ -1,4 +1,4 @@
-program = {variableDeclaration | functionDefinition};
+program = {functionDefinition};
 
 statement = ifStatement |
             whileStatement |

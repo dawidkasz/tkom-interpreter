@@ -62,7 +62,7 @@ public class DefaultParser implements Parser {
         consumeToken();
     }
 
-    // program = {variableDeclaration | functionDefinition};
+    // program = {functionDefinition};
     @Override
     public Program parseProgram() {
         Map<String, FunctionDefinition> functions = new HashMap<>();
@@ -233,12 +233,13 @@ public class DefaultParser implements Parser {
 
     // variableDeclaration = type identifier ["=" expression] ";";
     private Optional<Statement> parseVariableDeclaration() {
+        var position = token.position();
+
         Optional<Type> type = parseType();
         if (type.isEmpty()) {
             return Optional.empty();
         }
 
-        var position = token.position();
         var identifier = expectToken(TokenType.IDENTIFIER, "Expected identifier");
         var varName = (String) identifier.value();
 
