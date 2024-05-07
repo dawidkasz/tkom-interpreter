@@ -79,7 +79,11 @@ public class Interpreter {
 
         var input3 = """
         void f() {
-       
+            if (x == 1) {
+                a();
+            } else {
+                b();
+            }
         }      
         """;
 

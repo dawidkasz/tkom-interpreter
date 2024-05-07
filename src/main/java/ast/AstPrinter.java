@@ -170,7 +170,44 @@ public class AstPrinter implements Visitor {
 
     @Override
     public void visit(IfStatement ifStatement) {
+        print("If(\n");
+        withIndentation(() -> {
+            print("condition=");
+            withoutIndentationForNextLine(() -> ifStatement.condition().accept(this));
+            print("\n");
+            print("ifBody=[");
+            withIndentation(() ->
+                    ifStatement.ifBlock().forEach(statement -> {
+                        print("\n");
+                        statement.accept(this);
+                    })
+            );
+            if (ifStatement.ifBlock().isEmpty()) {
+                System.out.print("]");
+            } else {
+                print("\n");
+                print("]");
+            }
 
+            if (ifStatement.elseBlock() != null) {
+                print("\n");
+                print("elseBody=[");
+                withIndentation(() ->
+                        ifStatement.elseBlock().forEach(statement -> {
+                            print("\n");
+                            statement.accept(this);
+                        })
+                );
+                if (ifStatement.elseBlock().isEmpty()) {
+                    System.out.print("]");
+                } else {
+                    print("\n");
+                    print("]");
+                }
+            }
+        });
+        print("\n");
+        print("]");
     }
 
     @Override

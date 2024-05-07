@@ -217,13 +217,13 @@ public class DefaultParser implements Parser {
 
         List<Statement> ifBlock = parseStatementBlock();
 
-        List<Statement> elseBlock = Collections.emptyList();
         if (token.type() == TokenType.ELSE_KEYWORD) {
             consumeToken();
-            elseBlock = parseStatementBlock();
+            List<Statement> elseBlock = parseStatementBlock();
+            return Optional.of(new IfStatement(condition, ifBlock, elseBlock));
         }
 
-        return Optional.of(new IfStatement(condition, ifBlock, elseBlock));
+        return Optional.of(new IfStatement(condition, ifBlock, null));
     }
 
     private Optional<Statement> parseVariableDeclaration() {
