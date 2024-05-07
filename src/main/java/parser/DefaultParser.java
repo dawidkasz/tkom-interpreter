@@ -41,6 +41,7 @@ import ast.type.SimpleType;
 import ast.type.Type;
 import ast.type.VoidType;
 import lexer.Lexer;
+import lexer.Position;
 import lexer.Token;
 import lexer.TokenType;
 
@@ -92,7 +93,7 @@ public class DefaultParser implements Parser {
 
         var params = parseParameters();
 
-        expectToken(TokenType.RIGHT_ROUND_BRACKET, String.format("Expected right parentheses, but received %s", token.type()));
+        expectToken(TokenType.RIGHT_ROUND_BRACKET, "Expected right parentheses");
 
         var block = parseStatementBlock();
 
@@ -154,7 +155,7 @@ public class DefaultParser implements Parser {
             expectToken(TokenType.LEFT_SQUARE_BRACKET, "Expected left square bracket");
 
             if (!token.type().isSimpleType()) {
-                throw new SyntaxError("Expected simple returnType");
+                throw new SyntaxError("Expected simple type");
             }
             var paramType1 = Type.simpleType(token.type());
 
@@ -163,7 +164,7 @@ public class DefaultParser implements Parser {
             expectToken(TokenType.COMMA, "Expected comma");
 
             if (!token.type().isSimpleType()) {
-                throw new SyntaxError("Expected simple returnType");
+                throw new SyntaxError("Expected simple type");
             }
             var paramType2 = Type.simpleType(token.type());
 
@@ -312,7 +313,7 @@ public class DefaultParser implements Parser {
         expectToken(TokenType.LEFT_ROUND_BRACKET, "Expected left round bracket after while keyword");
 
         Expression expression = parseExpression()
-                .orElseThrow(() -> new SyntaxError("Missing expression in while statement"));
+                .orElseThrow(() -> new SyntaxError("Expected condition in while statement", position));
 
         expectToken(TokenType.RIGHT_ROUND_BRACKET, "Expected right round bracket after while keyword");
 
@@ -382,7 +383,7 @@ public class DefaultParser implements Parser {
         while (token.type() == TokenType.OR_OPERATOR) {
             consumeToken();
             Expression rightLogicFactor = parseAndExpression()
-                    .orElseThrow(() -> new SyntaxError("Missing right side of or operator"));
+                    .orElseThrow(() -> new SyntaxError("Missing right side of || operator"));
 
             leftLogicFactor = new OrExpression(leftLogicFactor, rightLogicFactor);
         }
@@ -708,7 +709,7 @@ public class DefaultParser implements Parser {
 
     private Token expectToken(TokenType expectedType, String errorMessage) {
         if (token.type() != expectedType) {
-            throw new SyntaxError(errorMessage);
+            throw new SyntaxError(errorMessage, token.position());
         }
 
         var currentToken = token;
@@ -719,6 +720,10 @@ public class DefaultParser implements Parser {
     public static class SyntaxError extends RuntimeException {
         SyntaxError(String message) {
             super(message);
+        }
+
+        SyntaxError(String message, Position position) {
+            super(message + String.format(" at position(line=%s, column=%s)", position.lineNumber(), position.columnNumber()));
         }
     }
 }

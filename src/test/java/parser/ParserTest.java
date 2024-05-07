@@ -56,9 +56,11 @@ import static lexer.TokenType.DIVISION_OPERATOR;
 import static lexer.TokenType.EQUAL_OPERATOR;
 import static lexer.TokenType.FLOAT_KEYWORD;
 import static lexer.TokenType.FLOAT_LITERAL;
+import static lexer.TokenType.FOREACH_KEYWORD;
 import static lexer.TokenType.GREATER_THAN_OPERATOR;
 import static lexer.TokenType.GREATER_THAN_OR_EQUAL_OPERATOR;
 import static lexer.TokenType.IDENTIFIER;
+import static lexer.TokenType.IF_KEYWORD;
 import static lexer.TokenType.INT_KEYWORD;
 import static lexer.TokenType.INT_LITERAL;
 import static lexer.TokenType.LEFT_CURLY_BRACKET;
@@ -74,6 +76,7 @@ import static lexer.TokenType.NULLABLE_OPERATOR;
 import static lexer.TokenType.NULL_KEYWORD;
 import static lexer.TokenType.OR_OPERATOR;
 import static lexer.TokenType.PLUS_OPERATOR;
+import static lexer.TokenType.RETURN_KEYWORD;
 import static lexer.TokenType.RIGHT_CURLY_BRACKET;
 import static lexer.TokenType.RIGHT_ROUND_BRACKET;
 import static lexer.TokenType.RIGHT_SQUARE_BRACKET;
@@ -81,6 +84,7 @@ import static lexer.TokenType.SEMICOLON;
 import static lexer.TokenType.STRING_KEYWORD;
 import static lexer.TokenType.STRING_LITERAL;
 import static lexer.TokenType.VOID_KEYWORD;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.AssertionsForClassTypes.tuple;
 import static parser.TokenFactory.getToken;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -137,6 +141,24 @@ public class ParserTest {
                 .matches(f -> f.returnType().equals(new DictType(new FloatType(), new FloatType())))
                 .extracting(FunctionDefinition::parameters)
                 .matches(List::isEmpty);
+    }
+
+    @Test
+    void should_throw_syntax_error_for_function_definition_without_argument_type() {
+         /*
+        given:
+
+        int f1(a) {}
+        */
+
+        var tokens = List.of(getToken(INT_KEYWORD), getToken(IDENTIFIER, "f1"),
+                getToken(LEFT_ROUND_BRACKET), getToken(IDENTIFIER, "a", new Position(1, 5)), getToken(RIGHT_ROUND_BRACKET),
+                getToken(LEFT_CURLY_BRACKET), getToken(RIGHT_CURLY_BRACKET), Token.eof());
+
+        // then
+        assertThatExceptionOfType(DefaultParser.SyntaxError.class)
+                .isThrownBy(() -> parseProgram(tokens))
+                .withMessage("Expected right parentheses at position(line=1, column=5)");
     }
 
     @Test
@@ -222,6 +244,29 @@ public class ParserTest {
                         ),
                         new Position(0, 0)
                 ));
+    }
+
+    @Test
+    void should_throw_syntax_error_for_expression_with_missing_operand() {
+  /*
+        given:
+
+        return 1 +;
+        */
+
+        var body = List.of(getToken(INT_LITERAL, 1), getToken(PLUS_OPERATOR));
+
+        var tokens = TokenFactory.program(List.of(
+                TokenFactory.function(
+                        INT_KEYWORD, "f", List.of(),
+                        TokenFactory.returnStatement(body)
+                )
+        ));
+
+        // then
+        assertThatExceptionOfType(DefaultParser.SyntaxError.class)
+                .isThrownBy(() -> parseProgram(tokens))
+                .withMessageContaining("Missing right side of + operator");
     }
 
     @Test
@@ -322,6 +367,27 @@ public class ParserTest {
     }
 
     @Test
+    void should_throw_syntax_error_for_return_statement_without_trailing_semicolon() {
+         /*
+        given:
+
+        return 1.0;
+        */
+
+        var body = List.of(getToken(RETURN_KEYWORD), getToken(FLOAT_LITERAL, 1.0f));
+
+        var tokens = TokenFactory.program(List.of(
+                TokenFactory.function(INT_KEYWORD, "f", List.of(), body)
+        ));
+
+        // then
+        assertThatExceptionOfType(DefaultParser.SyntaxError.class)
+                .isThrownBy(() -> parseProgram(tokens))
+                .withMessageContaining("Missing semicolon");
+    }
+
+
+    @Test
     void should_parse_while_statement() {
         /*
         given:
@@ -355,6 +421,24 @@ public class ParserTest {
                 .matches(s -> s.condition().equals(new LessThanOrEqual(new VariableValue("x"), new IntLiteral(5))))
                 .extracting(WhileStatement::statementBlock)
                 .matches(block -> block.size() == 3);
+    }
+
+    @Test
+    void should_throw_syntax_error_for_while_statement_without_condition() {
+         /*
+        given:
+
+        while()
+        */
+
+        var tokens = TokenFactory.program(List.of(
+                TokenFactory.function(VOID_KEYWORD, "f", List.of(), TokenFactory.whileStatement(List.of(), List.of()))
+        ));
+
+        // then
+        assertThatExceptionOfType(DefaultParser.SyntaxError.class)
+                .isThrownBy(() -> parseProgram(tokens))
+                .withMessageContaining("Expected condition in while statement");
     }
 
     @Test
@@ -399,6 +483,30 @@ public class ParserTest {
     }
 
     @Test
+    void should_throw_syntax_error_for_missing_left_round_bracket_in_foreach_statement() {
+  /*
+        given:
+
+        foreach int x : y) {}
+        */
+
+        var body = List.of(getToken(FOREACH_KEYWORD), getToken(INT_KEYWORD), getToken(IDENTIFIER, "x"), getToken(COLON),
+                getToken(IDENTIFIER, "y"), getToken(RIGHT_ROUND_BRACKET), getToken(LEFT_CURLY_BRACKET), getToken(RIGHT_CURLY_BRACKET));
+
+        var tokens = TokenFactory.program(List.of(
+                TokenFactory.function(
+                        VOID_KEYWORD, "f", List.of(),
+                        body
+                )
+        ));
+
+        // then
+        assertThatExceptionOfType(DefaultParser.SyntaxError.class)
+                .isThrownBy(() -> parseProgram(tokens))
+                .withMessageContaining("Expected left round bracket");
+    }
+
+    @Test
     void should_parse_if_else_statement() {
         /*
         given:
@@ -431,6 +539,30 @@ public class ParserTest {
                         List.of(new FunctionCall("a", Collections.emptyList(), new Position(2, 4))),
                         List.of(new FunctionCall("b", Collections.emptyList(), new Position(4, 4)))
                 )));
+    }
+
+    @Test
+    void should_throw_syntax_error_for_statement_block_with_missing_curly_bracket() {
+  /*
+        given:
+
+        if(1) }
+        */
+
+        var body = List.of(getToken(IF_KEYWORD), getToken(LEFT_ROUND_BRACKET), getToken(INT_LITERAL, 1),
+                getToken(RIGHT_ROUND_BRACKET), getToken(RIGHT_CURLY_BRACKET, null, new Position(3, 7)));
+
+        var tokens = TokenFactory.program(List.of(
+                TokenFactory.function(
+                        VOID_KEYWORD, "f", List.of(),
+                        body
+                )
+        ));
+
+        // then
+        assertThatExceptionOfType(DefaultParser.SyntaxError.class)
+                .isThrownBy(() -> parseProgram(tokens))
+                .withMessageContaining("Expected left curly bracket at position(line=3, column=7)");
     }
 
     @Test

@@ -84,6 +84,15 @@ public class Interpreter {
             } else {
                 b();
             }
+            
+            int x = f(1, 2);
+            
+            while(1 == 1) {
+                if(x) {
+                    f1();
+                    f2();
+                }   
+            }
         }      
         """;
 
