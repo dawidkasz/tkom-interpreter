@@ -27,7 +27,7 @@ public class LexerTest {
         List<Token> tokens = tokenize(filePath);
 
         // then
-        assertThat(tokens).extracting(Token::tokenType).containsExactly(
+        assertThat(tokens).extracting(Token::type).containsExactly(
                 TokenType.INT_KEYWORD,
                 TokenType.IDENTIFIER,
                 TokenType.ASSIGNMENT,
@@ -82,10 +82,10 @@ public class LexerTest {
     }
 
     private List<Token> tokenize(String filePath) {
-        Lexer lexer = new Lexer(new FileCharacterProvider(filePath));
+        Lexer lexer = new DefaultLexer(new FileCharacterProvider(filePath));
 
         return Stream.generate(lexer::nextToken)
-                .takeWhile(t -> !t.tokenType().equals(TokenType.EOF))
+                .takeWhile(t -> !t.type().equals(TokenType.EOF))
                 .collect(Collectors.toList());
     }
 }

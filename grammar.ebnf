@@ -1,16 +1,18 @@
-program = {variableDeclaration | functionDefinition};
+program = {functionDefinition | variableDeclaration};
 
 statement = ifStatement |
             whileStatement |
-            forEachStatement |
+            foreachStatement |
             variableDeclaration |
             assignment |
             functionCall |
             returnStatement;
 
-functionDefinition = functionReturnType identifier parameterList statementBlock;
+functionDefinition = functionReturnType identifier "(" parameters ")" statementBlock;
 
-parameterList = "(" [type identifier, {"," type identifier}] ")";
+parameters = [parameter, {"," parameter}];
+
+parameter = type identifier;
 
 statementBlock = "{" {statement} "}";
 
@@ -18,16 +20,16 @@ ifStatement = "if" "(" expression ")" statementBlock ["else" statementBlock];
 
 whileStatement = "while" "(" expression ")" statementBlock;
 
-forEachStatement = "foreach" "(" simpleType identifier ":" identifier ")" statementBlock;
+foreachStatement = "foreach" "(" simpleType identifier ":" expression ")" statementBlock;
 
 variableDeclaration = type identifier ["=" expression] ";";
 
 assignment = (identifier "=" expression ";") |
              (identifier "[" expression "]" "=" expression ";");
 
-functionCall = functionCallAsExpression ";";
+functionCall = identifier "(" arguments ")";
 
-argumentList = "(" [expression, {"," expression}] ")";
+arguments = [expression, {"," expression}];
 
 returnStatement = "return" expression ";";
 
@@ -35,23 +37,24 @@ expression = andExpression {orOperator andExpression};
 
 andExpression = relationExpression {andOperator relationExpression};
 
-relationExpression = additiveExpression {relationOperator additiveExpression};
+relationExpression = additiveExpression [relationOperator additiveExpression];
 
 additiveExpression = multiplicativeExpression {additiveOperator multiplicativeExpression};
 
-multiplicativeExpression = negatedSingleExpression {multiplicativeOperator negatedSingleExpression};
+multiplicativeExpression = nullableSingleExpression {multiplicativeOperator nullableSingleExpression};
+
+nullableSingleExpression = negatedSingleExpression ["?"];
 
 negatedSingleExpression = ["!" | "-"] castedExpression;
 
-castedExpression = singleExpression ["as" simpleType];
+castedExpression = dictKeyExpression ["as" simpleType];
 
-singleExpression = identifier |
+dictKeyExpression = simpleExpression ["[" expression "]"];
+
+simpleExpression = identifier |
                    literal |
                    "(" expression ")" |
-                   functionCallAsExpression |
-                   identifier "[" expression "]" ["?"];
-
-functionCallAsExpression = identifier argumentList;
+                   functionCall;
 
 functionReturnType = type | "void";
 
@@ -86,8 +89,9 @@ multiplicativeOperator = "*" |
 identifier = (letter | "_") {letter | digit | "_"};
 
 literal = stringLiteral |
-          numberLiteral |
-          dictionaryLiteral |
+          intLiteral |
+          floatLiteral |
+          dictLiteral |
           "null";
 
 letter = "a".."z" | "A".."Z";
@@ -98,6 +102,11 @@ nonZeroDigit = "1" .. "9";
 
 stringLiteral = "\"" .. "\"";
 
-numberLiteral = nonZeroDigit {digit} ["." digit {digit}];
+intLiteral = "0" | nonZeroDigit {digit};
 
-dictionaryLiteral = "{" [expression ":" expression {"," expression ":" expression }] "}";
+floatLiteral = "0." digit {digit} |
+               nonZeroDigit {digit} "." digit {digit};
+
+dictLiteral = "{" [dictLiteralKeyValuePair {"," dictLiteralKeyValuePair }] "}";
+
+dictLiteralKeyValuePair = expression ":" expression;

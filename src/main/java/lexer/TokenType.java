@@ -47,5 +47,22 @@ public enum TokenType {
     STRING_LITERAL,
     INT_LITERAL,
     FLOAT_LITERAL,
-    EOF,
+    EOF;
+
+    public boolean isRelationalOperator() {
+        return this == EQUAL_OPERATOR || this == NOT_EQUAL_OPERATOR || this == LESS_THAN_OPERATOR ||
+                this == LESS_THAN_OR_EQUAL_OPERATOR || this == GREATER_THAN_OPERATOR || this == GREATER_THAN_OR_EQUAL_OPERATOR;
+    }
+
+    public boolean isSimpleType() {
+        return this == INT_KEYWORD || this == FLOAT_KEYWORD || this == STRING_KEYWORD;
+    }
+
+    public boolean isCollectionType() {
+        return this == DICT_KEYWORD;
+    }
+
+    public boolean isFunctionReturnType() {
+        return isSimpleType() || isCollectionType() || this == VOID_KEYWORD;
+    }
 }
