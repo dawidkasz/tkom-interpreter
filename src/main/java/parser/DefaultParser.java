@@ -630,56 +630,63 @@ public class DefaultParser implements Parser {
             return Optional.of(expression);
         }
 
-        if (token.type() == TokenType.INT_LITERAL) {
-            int value = (int) token.value();
-            consumeToken();
-            return Optional.of(new IntLiteral(value));
+        return parseIntLiteral()
+                .or(this::parseFloatLiteral)
+                .or(this::parseStringLiteral)
+                .or(this::parseNullLiteral)
+                .or(this::parseDictLiteral)
+                .or(() -> parseIdentifierOrFunctionCallAsExpression(position));
+    }
+
+    private Optional<Expression> parseIntLiteral() {
+        if (token.type() != TokenType.INT_LITERAL) {
+            return Optional.empty();
         }
 
-        if (token.type() == TokenType.FLOAT_LITERAL) {
-            float value = (float) token.value();
-            consumeToken();
-            return Optional.of(new FloatLiteral(value));
+        int value = (int) token.value();
+        consumeToken();
+        return Optional.of(new IntLiteral(value));
+    }
+
+    private Optional<Expression> parseFloatLiteral() {
+        if (token.type() != TokenType.FLOAT_LITERAL) {
+            return Optional.empty();
         }
 
-        if (token.type() == TokenType.STRING_LITERAL) {
-            String value = (String) token.value();
-            consumeToken();
-            return Optional.of(new StringLiteral(value));
+        float value = (float) token.value();
+        consumeToken();
+        return Optional.of(new FloatLiteral(value));
+    }
+
+    private Optional<Expression> parseStringLiteral() {
+        if (token.type() != TokenType.STRING_LITERAL) {
+            return Optional.empty();
         }
 
-        if (token.type() == TokenType.NULL_KEYWORD) {
-            consumeToken();
-            return Optional.of(Null.getInstance());
+        String value = (String) token.value();
+        consumeToken();
+        return Optional.of(new StringLiteral(value));
+    }
+
+    private Optional<Expression> parseNullLiteral() {
+        if (token.type() != TokenType.NULL_KEYWORD) {
+            return Optional.empty();
         }
 
-        if (token.type() == TokenType.LEFT_CURLY_BRACKET) {
-            return Optional.of(parseDictLiteral());
-        }
-
-        if (token.type() == TokenType.IDENTIFIER) {
-            var identifierName = (String) token.value();
-            consumeToken();
-
-            if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
-                consumeToken();
-                List<Expression> arguments = parseArguments();
-                expectToken(TokenType.RIGHT_ROUND_BRACKET, "Missing right round bracket in function call");
-
-                return Optional.of(new FunctionCall(identifierName, arguments, position));
-            }
-
-            return Optional.of(new VariableValue(identifierName));
-        }
-
-        return Optional.empty();
+        consumeToken();
+        return Optional.of(Null.getInstance());
     }
 
     // dictLiteral = "{" [expression ":" expression {"," expression ":" expression }] "}";
-    private Expression parseDictLiteral() {
-        expectToken(TokenType.LEFT_CURLY_BRACKET, "Expected left curly bracket");
+    private Optional<Expression> parseDictLiteral() {
+        if (token.type() != TokenType.LEFT_CURLY_BRACKET) {
+            return Optional.empty();
+        }
+
+        consumeToken();
+
         if (token.type() == TokenType.RIGHT_CURLY_BRACKET) {
-            return DictLiteral.empty();
+            return Optional.of(DictLiteral.empty());
         }
 
         Map<Expression, Expression> content = new HashMap<>();
@@ -696,7 +703,26 @@ public class DefaultParser implements Parser {
 
         expectToken(TokenType.RIGHT_CURLY_BRACKET, "Expected right curly bracket");
 
-        return new DictLiteral(content);
+        return Optional.of(new DictLiteral(content));
+    }
+
+    private Optional<Expression> parseIdentifierOrFunctionCallAsExpression(Position position) {
+        if (token.type() != TokenType.IDENTIFIER) {
+            return Optional.empty();
+        }
+
+        var identifierName = (String) token.value();
+        consumeToken();
+
+        if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
+            consumeToken();
+            List<Expression> arguments = parseArguments();
+            expectToken(TokenType.RIGHT_ROUND_BRACKET, "Missing right round bracket in function call");
+
+            return Optional.of(new FunctionCall(identifierName, arguments, position));
+        }
+
+        return Optional.of(new VariableValue(identifierName));
     }
 
     // dictLiteralKeyValuePair = expression ":" expression;
