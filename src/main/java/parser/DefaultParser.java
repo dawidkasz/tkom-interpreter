@@ -52,6 +52,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiFunction;
 
 public class DefaultParser implements Parser {
     private final Lexer lexer;
@@ -487,20 +488,20 @@ public class DefaultParser implements Parser {
             return Optional.empty();
         }
 
-        var leftLogicFactor = left.get();
+        Expression leftLogicFactor = left.get();
 
-        while (token.type() == TokenType.PLUS_OPERATOR || token.type() == TokenType.MINUS_OPERATOR) {
-            TokenType tokenType = token.type();
+        Map<TokenType, BiFunction<Expression, Expression, Expression>> operators = Map.of(
+                TokenType.PLUS_OPERATOR, PlusExpression::new,
+                TokenType.MINUS_OPERATOR, MinusExpression::new
+        );
+
+        while (operators.containsKey(token.type())) {
+            TokenType type = token.type();
+
             consumeToken();
+            var rightLogicFactor = parseMultiplicativeExpression().orElseThrow(() -> new SyntaxError("Missing right side of operator"));
 
-            Expression rightLogicFactor = parseMultiplicativeExpression()
-                    .orElseThrow(() -> new SyntaxError("Missing right side of + operator"));
-
-            if (tokenType == TokenType.PLUS_OPERATOR) {
-                leftLogicFactor = new PlusExpression(leftLogicFactor, rightLogicFactor);
-            } else {
-                leftLogicFactor = new MinusExpression(leftLogicFactor, rightLogicFactor);
-            }
+            leftLogicFactor = operators.get(type).apply(leftLogicFactor, rightLogicFactor);
         }
 
         return Optional.of(leftLogicFactor);
@@ -512,27 +513,21 @@ public class DefaultParser implements Parser {
             return Optional.empty();
         }
 
-        var leftLogicFactor = left.get();
+        Expression leftLogicFactor = left.get();
 
-        TokenType type;
-        while (
-            token.type() == TokenType.MULTIPLICATION_OPERATOR ||
-            token.type() == TokenType.DIVISION_OPERATOR ||
-            token.type() == TokenType.MODULO_OPERATOR
-        ) {
-            type = token.type();
+        Map<TokenType, BiFunction<Expression, Expression, Expression>> operators = Map.of(
+                TokenType.MULTIPLICATION_OPERATOR, MultiplyExpression::new,
+                TokenType.DIVISION_OPERATOR, DivideExpression::new,
+                TokenType.MODULO_OPERATOR, ModuloExpression::new
+        );
+
+        while (operators.containsKey(token.type())) {
+            TokenType type = token.type();
 
             consumeToken();
-            var rightLogicFactor = parseNullableExpression()
-                    .orElseThrow(() -> new SyntaxError("Missing right side of * operator"));
+            var rightLogicFactor = parseNullableExpression().orElseThrow(() -> new SyntaxError("Missing right side of operator"));
 
-            if (type == TokenType.MULTIPLICATION_OPERATOR) {
-                leftLogicFactor = new MultiplyExpression(leftLogicFactor, rightLogicFactor);
-            } else if (type == TokenType.DIVISION_OPERATOR ) {
-                leftLogicFactor = new DivideExpression(leftLogicFactor, rightLogicFactor);
-            } else {
-                leftLogicFactor = new ModuloExpression(leftLogicFactor, rightLogicFactor);
-            }
+            leftLogicFactor = operators.get(type).apply(leftLogicFactor, rightLogicFactor);
         }
 
         return Optional.of(leftLogicFactor);

@@ -341,7 +341,7 @@ public class ParserTest {
         // then
         assertThatExceptionOfType(DefaultParser.SyntaxError.class)
                 .isThrownBy(() -> parseProgram(tokens))
-                .withMessageContaining("Missing right side of + operator");
+                .withMessageContaining("Missing right side of operator");
     }
 
     @Test
