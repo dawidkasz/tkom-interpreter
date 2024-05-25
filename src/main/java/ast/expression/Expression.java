@@ -1,6 +1,6 @@
 package ast.expression;
 
-import ast.Visitable;
+import ast.AstNode;
 
-public interface Expression extends Visitable {
+public interface Expression extends AstNode {
 }

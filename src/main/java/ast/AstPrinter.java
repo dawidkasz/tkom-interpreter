@@ -33,7 +33,7 @@ import ast.statement.VariableAssignment;
 import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
 
-public class AstPrinter implements Visitor {
+public class AstPrinter implements AstVisitor {
     private static final int INDENTATION_LEVEL = 2;
 
     private int indentation = 0;

@@ -163,6 +163,24 @@ public class ParserTest {
     }
 
     @Test
+    void should_not_allow_void_type_in_function_arguments() {
+         /*
+        given:
+
+        int f(void a) {}
+        */
+
+        var tokens = List.of(getToken(INT_KEYWORD), getToken(IDENTIFIER, "f"), getToken(LEFT_ROUND_BRACKET),
+                getToken(VOID_KEYWORD), getToken(IDENTIFIER, "a"), getToken(RIGHT_ROUND_BRACKET),
+                getToken(LEFT_CURLY_BRACKET), getToken(RIGHT_CURLY_BRACKET), Token.eof());
+
+        // then
+        assertThatExceptionOfType(DefaultParser.SyntaxError.class)
+                .isThrownBy(() -> parseProgram(tokens))
+                .withMessageContaining("Expected right parentheses");
+    }
+
+    @Test
     void should_parse_global_variable_definition() {
         /*
         given:
@@ -183,6 +201,22 @@ public class ParserTest {
         assertThat(program.globalVariables().get("x"))
                 .extracting(v -> tuple(v.type(), v.name(), v.value()))
                 .matches(t -> t.equals(tuple(new FloatType(), "x", new FloatLiteral(1.0f))));
+    }
+
+    @Test
+    void should_not_allow_void_type_in_variable_declarations() {
+        /*
+        given:
+
+        void x;
+        */
+
+        var tokens = List.of(getToken(VOID_KEYWORD), getToken(IDENTIFIER, "x"), getToken(SEMICOLON), Token.eof());
+
+        // then
+        assertThatExceptionOfType(DefaultParser.SyntaxError.class)
+                .isThrownBy(() -> parseProgram(tokens))
+                .withMessageContaining("Variable can't be of type void");
     }
 
     @Test
@@ -307,7 +341,7 @@ public class ParserTest {
         // then
         assertThatExceptionOfType(DefaultParser.SyntaxError.class)
                 .isThrownBy(() -> parseProgram(tokens))
-                .withMessageContaining("Missing right side of + operator");
+                .withMessageContaining("Missing right side of operator");
     }
 
     @Test
