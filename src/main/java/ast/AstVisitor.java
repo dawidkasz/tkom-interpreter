@@ -32,7 +32,7 @@ import ast.statement.VariableAssignment;
 import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
 
-public interface Visitor {
+public interface AstVisitor {
     void visit(Program program);
     void visit(FunctionDefinition functionDefinition);
     void visit(VariableAssignment variableAssignment);

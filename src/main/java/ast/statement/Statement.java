@@ -1,8 +1,8 @@
 package ast.statement;
 
-import ast.Visitable;
+import ast.AstNode;
 import lexer.Position;
 
-public interface Statement extends Visitable {
+public interface Statement extends AstNode {
     Position position();
 }

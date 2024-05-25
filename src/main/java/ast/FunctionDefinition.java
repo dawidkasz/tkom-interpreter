@@ -12,9 +12,9 @@ public record FunctionDefinition(
         List<Parameter> parameters,
         List<Statement> statementBlock,
         Position position
-) implements Visitable, Declaration {
+) implements AstNode, Declaration {
     @Override
-    public void accept(Visitor visitor) {
+    public void accept(AstVisitor visitor) {
         visitor.visit(this);
     }
 }

@@ -1,6 +1,6 @@
 package ast.expression;
 
-import ast.Visitor;
+import ast.AstVisitor;
 
 public final class Null implements Expression {
     public static final Null instance = new Null();
@@ -12,7 +12,7 @@ public final class Null implements Expression {
     private Null() {}
 
     @Override
-    public void accept(Visitor visitor) {
+    public void accept(AstVisitor visitor) {
         visitor.visit(this);
     }
 }
