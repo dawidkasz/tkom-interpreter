@@ -1,6 +1,6 @@
 package ast.statement;
 
-import ast.Visitor;
+import ast.AstVisitor;
 import ast.expression.Expression;
 import lexer.Position;
 
@@ -17,7 +17,7 @@ public record IfStatement(
     }
 
     @Override
-    public void accept(Visitor visitor) {
+    public void accept(AstVisitor visitor) {
         visitor.visit(this);
     }
 }

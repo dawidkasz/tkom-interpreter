@@ -35,9 +35,9 @@ returnStatement = "return" expression ";";
 
 expression = andExpression {orOperator andExpression};
 
-andExpression = relationExpression {andOperator relationExpression};
+andExpression = relationalExpression {andOperator relationalExpression};
 
-relationExpression = additiveExpression [relationOperator additiveExpression];
+relationalExpression = additiveExpression [relationalOperator additiveExpression];
 
 additiveExpression = multiplicativeExpression {additiveOperator multiplicativeExpression};
 
@@ -72,7 +72,7 @@ orOperator = "||";
 
 andOperator = "&&";
 
-relationOperator = "<" |
+relationalOperator = "<" |
                    ">" |
                    "<=" |
                    ">=" |

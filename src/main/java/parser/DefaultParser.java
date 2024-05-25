@@ -9,24 +9,13 @@ import ast.expression.AndExpression;
 import ast.expression.CastedExpression;
 import ast.expression.DictValue;
 import ast.expression.DictLiteral;
-import ast.expression.DivideExpression;
-import ast.expression.Equal;
 import ast.expression.Expression;
 import ast.expression.FloatLiteral;
-import ast.expression.GreaterThan;
-import ast.expression.GreaterThanOrEqual;
 import ast.expression.IntLiteral;
-import ast.expression.LessThan;
-import ast.expression.LessThanOrEqual;
-import ast.expression.MinusExpression;
-import ast.expression.ModuloExpression;
-import ast.expression.MultiplyExpression;
 import ast.expression.NegationExpression;
-import ast.expression.NotEqual;
 import ast.expression.Null;
 import ast.expression.NullableExpression;
 import ast.expression.OrExpression;
-import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
 import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
@@ -95,7 +84,7 @@ public class DefaultParser implements Parser {
 
         var position = token.position();
 
-        Type type = parseType().orElseThrow(() -> new SyntaxError("Expected function return type"));
+        Type type = parseFunctionReturnType().orElseThrow(() -> new SyntaxError("Expected function return type"));
 
         Token t = expectToken(TokenType.IDENTIFIER, "Expected an identifier");
         var varName = (String) t.value();
@@ -138,7 +127,7 @@ public class DefaultParser implements Parser {
         return parameters;
     }
 
-    // parameter = returnType identifier;
+    // parameter = type identifier;
     private Optional<Parameter> parseParameter() {
         var type = parseType();
         if (type.isEmpty()) {
@@ -150,14 +139,21 @@ public class DefaultParser implements Parser {
         return Optional.of(new Parameter(type.get(), (String) identifier.value()));
     }
 
-    // returnType = simpleType | parametrizedType;
-    private Optional<Type> parseType() {
+    // functionReturnType = type | "void";
+    private Optional<Type> parseFunctionReturnType() {
         TokenType tokenType = token.type();
 
         if (tokenType == TokenType.VOID_KEYWORD) {
             consumeToken();
             return Optional.of(new VoidType());
         }
+
+        return parseType();
+    }
+
+    // type = simpleType | parametrizedType;
+    private Optional<Type> parseType() {
+        TokenType tokenType = token.type();
 
         if (tokenType.isSimpleType()) {
             var type = Type.simpleType(token.type());
@@ -414,7 +410,7 @@ public class DefaultParser implements Parser {
 
     // andExpression = relationExpression {andOperator relationExpression};
     private Optional<Expression> parseAndExpression() {
-        var left = parseRelationExpression();
+        var left = parseRelationalExpression();
         if (left.isEmpty()) {
             return Optional.empty();
         }
@@ -423,7 +419,7 @@ public class DefaultParser implements Parser {
 
         while (token.type() == TokenType.AND_OPERATOR) {
             consumeToken();
-            var rightLogicFactor = parseRelationExpression()
+            var rightLogicFactor = parseRelationalExpression()
                     .orElseThrow(() -> new SyntaxError("Missing right side of && operator"));
 
             leftLogicFactor = new AndExpression(leftLogicFactor, rightLogicFactor);
@@ -432,46 +428,27 @@ public class DefaultParser implements Parser {
         return Optional.of(leftLogicFactor);
     }
 
-    // relationExpression = additiveExpression [relationOperator additiveExpression];
-    private Optional<Expression> parseRelationExpression() {
+    // relationalExpression = additiveExpression [relationalOperator additiveExpression];
+    private Optional<Expression> parseRelationalExpression() {
         var left = parseAdditiveExpression();
         if (left.isEmpty()) {
             return Optional.empty();
         }
 
-        var leftLogicFactor = left.get();
+        Expression leftLogicFactor = left.get();
 
         TokenType operatorTokenType = token.type();
-        if (!operatorTokenType.isRelationalOperator()) {
+
+        if (!OperatorFactory.isRelationalOperator(operatorTokenType)) {
             return left;
         }
 
         consumeToken();
 
         Expression rightLogicFactor = parseAdditiveExpression()
-                .orElseThrow(() -> new SyntaxError("Missing right side of < operator"));
+                .orElseThrow(() -> new SyntaxError("Missing right side of relational operator"));
 
-        switch (operatorTokenType) {
-            case LESS_THAN_OPERATOR -> {
-                return Optional.of(new LessThan(leftLogicFactor, rightLogicFactor));
-            }
-            case LESS_THAN_OR_EQUAL_OPERATOR -> {
-                return Optional.of(new LessThanOrEqual(leftLogicFactor, rightLogicFactor));
-            }
-            case GREATER_THAN_OPERATOR -> {
-                return Optional.of(new GreaterThan(leftLogicFactor, rightLogicFactor));
-            }
-            case GREATER_THAN_OR_EQUAL_OPERATOR -> {
-                return Optional.of(new GreaterThanOrEqual(leftLogicFactor, rightLogicFactor));
-            }
-            case EQUAL_OPERATOR -> {
-                return Optional.of(new Equal(leftLogicFactor, rightLogicFactor));
-            }
-            case NOT_EQUAL_OPERATOR -> {
-                return Optional.of(new NotEqual(leftLogicFactor, rightLogicFactor));
-            }
-            default -> throw new SyntaxError("Unrecognized relational operator");
-        }
+        return Optional.of(OperatorFactory.createRelationalExpression(operatorTokenType, leftLogicFactor, rightLogicFactor));
     }
 
     private Optional<Expression> parseAdditiveExpression() {
@@ -480,20 +457,15 @@ public class DefaultParser implements Parser {
             return Optional.empty();
         }
 
-        var leftLogicFactor = left.get();
+        Expression leftLogicFactor = left.get();
 
-        while (token.type() == TokenType.PLUS_OPERATOR || token.type() == TokenType.MINUS_OPERATOR) {
-            TokenType tokenType = token.type();
+        while (OperatorFactory.isAdditiveOperator(token.type())) {
+            TokenType type = token.type();
+
             consumeToken();
+            var rightLogicFactor = parseMultiplicativeExpression().orElseThrow(() -> new SyntaxError("Missing right side of operator"));
 
-            Expression rightLogicFactor = parseMultiplicativeExpression()
-                    .orElseThrow(() -> new SyntaxError("Missing right side of + operator"));
-
-            if (tokenType == TokenType.PLUS_OPERATOR) {
-                leftLogicFactor = new PlusExpression(leftLogicFactor, rightLogicFactor);
-            } else {
-                leftLogicFactor = new MinusExpression(leftLogicFactor, rightLogicFactor);
-            }
+            leftLogicFactor = OperatorFactory.createAdditiveExpression(type, leftLogicFactor, rightLogicFactor);
         }
 
         return Optional.of(leftLogicFactor);
@@ -505,27 +477,15 @@ public class DefaultParser implements Parser {
             return Optional.empty();
         }
 
-        var leftLogicFactor = left.get();
+        Expression leftLogicFactor = left.get();
 
-        TokenType type;
-        while (
-            token.type() == TokenType.MULTIPLICATION_OPERATOR ||
-            token.type() == TokenType.DIVISION_OPERATOR ||
-            token.type() == TokenType.MODULO_OPERATOR
-        ) {
-            type = token.type();
+        while (OperatorFactory.isMultiplicativeOperator(token.type())) {
+            TokenType type = token.type();
 
             consumeToken();
-            var rightLogicFactor = parseNullableExpression()
-                    .orElseThrow(() -> new SyntaxError("Missing right side of * operator"));
+            var rightLogicFactor = parseNullableExpression().orElseThrow(() -> new SyntaxError("Missing right side of operator"));
 
-            if (type == TokenType.MULTIPLICATION_OPERATOR) {
-                leftLogicFactor = new MultiplyExpression(leftLogicFactor, rightLogicFactor);
-            } else if (type == TokenType.DIVISION_OPERATOR ) {
-                leftLogicFactor = new DivideExpression(leftLogicFactor, rightLogicFactor);
-            } else {
-                leftLogicFactor = new ModuloExpression(leftLogicFactor, rightLogicFactor);
-            }
+            leftLogicFactor = OperatorFactory.createMultiplicativeExpression(type, leftLogicFactor, rightLogicFactor);
         }
 
         return Optional.of(leftLogicFactor);
@@ -623,56 +583,63 @@ public class DefaultParser implements Parser {
             return Optional.of(expression);
         }
 
-        if (token.type() == TokenType.INT_LITERAL) {
-            int value = (int) token.value();
-            consumeToken();
-            return Optional.of(new IntLiteral(value));
+        return parseIntLiteral()
+                .or(this::parseFloatLiteral)
+                .or(this::parseStringLiteral)
+                .or(this::parseNullLiteral)
+                .or(this::parseDictLiteral)
+                .or(() -> parseIdentifierOrFunctionCallAsExpression(position));
+    }
+
+    private Optional<Expression> parseIntLiteral() {
+        if (token.type() != TokenType.INT_LITERAL) {
+            return Optional.empty();
         }
 
-        if (token.type() == TokenType.FLOAT_LITERAL) {
-            float value = (float) token.value();
-            consumeToken();
-            return Optional.of(new FloatLiteral(value));
+        int value = (int) token.value();
+        consumeToken();
+        return Optional.of(new IntLiteral(value));
+    }
+
+    private Optional<Expression> parseFloatLiteral() {
+        if (token.type() != TokenType.FLOAT_LITERAL) {
+            return Optional.empty();
         }
 
-        if (token.type() == TokenType.STRING_LITERAL) {
-            String value = (String) token.value();
-            consumeToken();
-            return Optional.of(new StringLiteral(value));
+        float value = (float) token.value();
+        consumeToken();
+        return Optional.of(new FloatLiteral(value));
+    }
+
+    private Optional<Expression> parseStringLiteral() {
+        if (token.type() != TokenType.STRING_LITERAL) {
+            return Optional.empty();
         }
 
-        if (token.type() == TokenType.NULL_KEYWORD) {
-            consumeToken();
-            return Optional.of(Null.getInstance());
+        String value = (String) token.value();
+        consumeToken();
+        return Optional.of(new StringLiteral(value));
+    }
+
+    private Optional<Expression> parseNullLiteral() {
+        if (token.type() != TokenType.NULL_KEYWORD) {
+            return Optional.empty();
         }
 
-        if (token.type() == TokenType.LEFT_CURLY_BRACKET) {
-            return Optional.of(parseDictLiteral());
-        }
-
-        if (token.type() == TokenType.IDENTIFIER) {
-            var identifierName = (String) token.value();
-            consumeToken();
-
-            if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
-                consumeToken();
-                List<Expression> arguments = parseArguments();
-                expectToken(TokenType.RIGHT_ROUND_BRACKET, "Missing right round bracket in function call");
-
-                return Optional.of(new FunctionCall(identifierName, arguments, position));
-            }
-
-            return Optional.of(new VariableValue(identifierName));
-        }
-
-        return Optional.empty();
+        consumeToken();
+        return Optional.of(Null.getInstance());
     }
 
     // dictLiteral = "{" [expression ":" expression {"," expression ":" expression }] "}";
-    private Expression parseDictLiteral() {
-        expectToken(TokenType.LEFT_CURLY_BRACKET, "Expected left curly bracket");
+    private Optional<Expression> parseDictLiteral() {
+        if (token.type() != TokenType.LEFT_CURLY_BRACKET) {
+            return Optional.empty();
+        }
+
+        consumeToken();
+
         if (token.type() == TokenType.RIGHT_CURLY_BRACKET) {
-            return DictLiteral.empty();
+            return Optional.of(DictLiteral.empty());
         }
 
         Map<Expression, Expression> content = new HashMap<>();
@@ -689,7 +656,26 @@ public class DefaultParser implements Parser {
 
         expectToken(TokenType.RIGHT_CURLY_BRACKET, "Expected right curly bracket");
 
-        return new DictLiteral(content);
+        return Optional.of(new DictLiteral(content));
+    }
+
+    private Optional<Expression> parseIdentifierOrFunctionCallAsExpression(Position position) {
+        if (token.type() != TokenType.IDENTIFIER) {
+            return Optional.empty();
+        }
+
+        var identifierName = (String) token.value();
+        consumeToken();
+
+        if (token.type() == TokenType.LEFT_ROUND_BRACKET) {
+            consumeToken();
+            List<Expression> arguments = parseArguments();
+            expectToken(TokenType.RIGHT_ROUND_BRACKET, "Missing right round bracket in function call");
+
+            return Optional.of(new FunctionCall(identifierName, arguments, position));
+        }
+
+        return Optional.of(new VariableValue(identifierName));
     }
 
     // dictLiteralKeyValuePair = expression ":" expression;

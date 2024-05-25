@@ -1,6 +1,6 @@
 package ast.expression;
 
-import ast.Visitor;
+import ast.AstVisitor;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,11 +12,11 @@ public record DictLiteral(Map<Expression, Expression> content) implements Expres
     }
 
     public static DictLiteral empty() {
-        return new DictLiteral(Collections.emptyMap());
+        return new DictLiteral(new HashMap<>());
     }
 
     @Override
-    public void accept(Visitor visitor) {
+    public void accept(AstVisitor visitor) {
         visitor.visit(this);
     }
 }
