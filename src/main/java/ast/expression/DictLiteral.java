@@ -12,7 +12,7 @@ public record DictLiteral(Map<Expression, Expression> content) implements Expres
     }
 
     public static DictLiteral empty() {
-        return new DictLiteral(Collections.emptyMap());
+        return new DictLiteral(new HashMap<>());
     }
 
     @Override

@@ -15,16 +15,4 @@ public record Program(Map<String, FunctionDefinition> functions, Map<String, Var
     public void accept(AstVisitor visitor) {
         visitor.visit(this);
     }
-
-    @Override
-    public String toString() {
-        var builder = new StringBuilder();
-
-        functions.forEach((key, value) -> {
-            builder.append(value.toString());
-            builder.append("\n\n");
-        });
-
-        return builder.toString();
-    }
 }
