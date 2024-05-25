@@ -95,7 +95,7 @@ public class DefaultParser implements Parser {
 
         var position = token.position();
 
-        Type type = parseType().orElseThrow(() -> new SyntaxError("Expected function return type"));
+        Type type = parseFunctionReturnType().orElseThrow(() -> new SyntaxError("Expected function return type"));
 
         Token t = expectToken(TokenType.IDENTIFIER, "Expected an identifier");
         var varName = (String) t.value();
@@ -138,7 +138,7 @@ public class DefaultParser implements Parser {
         return parameters;
     }
 
-    // parameter = returnType identifier;
+    // parameter = type identifier;
     private Optional<Parameter> parseParameter() {
         var type = parseType();
         if (type.isEmpty()) {
@@ -150,14 +150,21 @@ public class DefaultParser implements Parser {
         return Optional.of(new Parameter(type.get(), (String) identifier.value()));
     }
 
-    // returnType = simpleType | parametrizedType;
-    private Optional<Type> parseType() {
+    // functionReturnType = type | "void";
+    private Optional<Type> parseFunctionReturnType() {
         TokenType tokenType = token.type();
 
         if (tokenType == TokenType.VOID_KEYWORD) {
             consumeToken();
             return Optional.of(new VoidType());
         }
+
+        return parseType();
+    }
+
+    // type = simpleType | parametrizedType;
+    private Optional<Type> parseType() {
+        TokenType tokenType = token.type();
 
         if (tokenType.isSimpleType()) {
             var type = Type.simpleType(token.type());
