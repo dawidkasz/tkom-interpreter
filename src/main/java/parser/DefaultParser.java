@@ -9,24 +9,13 @@ import ast.expression.AndExpression;
 import ast.expression.CastedExpression;
 import ast.expression.DictValue;
 import ast.expression.DictLiteral;
-import ast.expression.DivideExpression;
-import ast.expression.Equal;
 import ast.expression.Expression;
 import ast.expression.FloatLiteral;
-import ast.expression.GreaterThan;
-import ast.expression.GreaterThanOrEqual;
 import ast.expression.IntLiteral;
-import ast.expression.LessThan;
-import ast.expression.LessThanOrEqual;
-import ast.expression.MinusExpression;
-import ast.expression.ModuloExpression;
-import ast.expression.MultiplyExpression;
 import ast.expression.NegationExpression;
-import ast.expression.NotEqual;
 import ast.expression.Null;
 import ast.expression.NullableExpression;
 import ast.expression.OrExpression;
-import ast.expression.PlusExpression;
 import ast.expression.StringLiteral;
 import ast.expression.UnaryMinusExpression;
 import ast.expression.VariableValue;
@@ -52,7 +41,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.BiFunction;
 
 public class DefaultParser implements Parser {
     private final Lexer lexer;
@@ -422,7 +410,7 @@ public class DefaultParser implements Parser {
 
     // andExpression = relationExpression {andOperator relationExpression};
     private Optional<Expression> parseAndExpression() {
-        var left = parseRelationExpression();
+        var left = parseRelationalExpression();
         if (left.isEmpty()) {
             return Optional.empty();
         }
@@ -431,7 +419,7 @@ public class DefaultParser implements Parser {
 
         while (token.type() == TokenType.AND_OPERATOR) {
             consumeToken();
-            var rightLogicFactor = parseRelationExpression()
+            var rightLogicFactor = parseRelationalExpression()
                     .orElseThrow(() -> new SyntaxError("Missing right side of && operator"));
 
             leftLogicFactor = new AndExpression(leftLogicFactor, rightLogicFactor);
@@ -440,46 +428,27 @@ public class DefaultParser implements Parser {
         return Optional.of(leftLogicFactor);
     }
 
-    // relationExpression = additiveExpression [relationOperator additiveExpression];
-    private Optional<Expression> parseRelationExpression() {
+    // relationalExpression = additiveExpression [relationalOperator additiveExpression];
+    private Optional<Expression> parseRelationalExpression() {
         var left = parseAdditiveExpression();
         if (left.isEmpty()) {
             return Optional.empty();
         }
 
-        var leftLogicFactor = left.get();
+        Expression leftLogicFactor = left.get();
 
         TokenType operatorTokenType = token.type();
-        if (!operatorTokenType.isRelationalOperator()) {
+
+        if (!OperatorFactory.isRelationalOperator(operatorTokenType)) {
             return left;
         }
 
         consumeToken();
 
         Expression rightLogicFactor = parseAdditiveExpression()
-                .orElseThrow(() -> new SyntaxError("Missing right side of < operator"));
+                .orElseThrow(() -> new SyntaxError("Missing right side of relational operator"));
 
-        switch (operatorTokenType) {
-            case LESS_THAN_OPERATOR -> {
-                return Optional.of(new LessThan(leftLogicFactor, rightLogicFactor));
-            }
-            case LESS_THAN_OR_EQUAL_OPERATOR -> {
-                return Optional.of(new LessThanOrEqual(leftLogicFactor, rightLogicFactor));
-            }
-            case GREATER_THAN_OPERATOR -> {
-                return Optional.of(new GreaterThan(leftLogicFactor, rightLogicFactor));
-            }
-            case GREATER_THAN_OR_EQUAL_OPERATOR -> {
-                return Optional.of(new GreaterThanOrEqual(leftLogicFactor, rightLogicFactor));
-            }
-            case EQUAL_OPERATOR -> {
-                return Optional.of(new Equal(leftLogicFactor, rightLogicFactor));
-            }
-            case NOT_EQUAL_OPERATOR -> {
-                return Optional.of(new NotEqual(leftLogicFactor, rightLogicFactor));
-            }
-            default -> throw new SyntaxError("Unrecognized relational operator");
-        }
+        return Optional.of(OperatorFactory.createRelationalExpression(operatorTokenType, leftLogicFactor, rightLogicFactor));
     }
 
     private Optional<Expression> parseAdditiveExpression() {
@@ -490,18 +459,13 @@ public class DefaultParser implements Parser {
 
         Expression leftLogicFactor = left.get();
 
-        Map<TokenType, BiFunction<Expression, Expression, Expression>> operators = Map.of(
-                TokenType.PLUS_OPERATOR, PlusExpression::new,
-                TokenType.MINUS_OPERATOR, MinusExpression::new
-        );
-
-        while (operators.containsKey(token.type())) {
+        while (OperatorFactory.isAdditiveOperator(token.type())) {
             TokenType type = token.type();
 
             consumeToken();
             var rightLogicFactor = parseMultiplicativeExpression().orElseThrow(() -> new SyntaxError("Missing right side of operator"));
 
-            leftLogicFactor = operators.get(type).apply(leftLogicFactor, rightLogicFactor);
+            leftLogicFactor = OperatorFactory.createAdditiveExpression(type, leftLogicFactor, rightLogicFactor);
         }
 
         return Optional.of(leftLogicFactor);
@@ -515,19 +479,13 @@ public class DefaultParser implements Parser {
 
         Expression leftLogicFactor = left.get();
 
-        Map<TokenType, BiFunction<Expression, Expression, Expression>> operators = Map.of(
-                TokenType.MULTIPLICATION_OPERATOR, MultiplyExpression::new,
-                TokenType.DIVISION_OPERATOR, DivideExpression::new,
-                TokenType.MODULO_OPERATOR, ModuloExpression::new
-        );
-
-        while (operators.containsKey(token.type())) {
+        while (OperatorFactory.isMultiplicativeOperator(token.type())) {
             TokenType type = token.type();
 
             consumeToken();
             var rightLogicFactor = parseNullableExpression().orElseThrow(() -> new SyntaxError("Missing right side of operator"));
 
-            leftLogicFactor = operators.get(type).apply(leftLogicFactor, rightLogicFactor);
+            leftLogicFactor = OperatorFactory.createMultiplicativeExpression(type, leftLogicFactor, rightLogicFactor);
         }
 
         return Optional.of(leftLogicFactor);
