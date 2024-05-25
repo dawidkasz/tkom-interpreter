@@ -3,7 +3,7 @@ package ast.expression;
 import ast.AstVisitor;
 
 public final class Null implements Expression {
-    public static final Null instance = new Null();
+    private static final Null instance = new Null();
 
     public static Null getInstance() {
         return instance;
