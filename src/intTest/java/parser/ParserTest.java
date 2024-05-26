@@ -3,6 +3,7 @@ package parser;
 import ast.FunctionCall;
 import ast.Parameter;
 import ast.Program;
+import ast.StatementBlock;
 import ast.expression.CastedExpression;
 import ast.expression.FloatLiteral;
 import ast.expression.IntLiteral;
@@ -73,7 +74,7 @@ public class ParserTest {
                         List.of(new Parameter(new IntType(), "x"))
                 )));
 
-        assertThat(program.functions().get("sq").statementBlock())
+        assertThat(program.functions().get("sq").statementBlock().statements())
                 .hasSize(1)
                 .first()
                 .matches(s -> s.equals(new ReturnStatement(
@@ -90,9 +91,9 @@ public class ParserTest {
                         List.of()
                 )));
 
-        assertThat(program.functions().get("main").statementBlock()).hasSize(2);
+        assertThat(program.functions().get("main").statementBlock().statements()).hasSize(2);
 
-        assertThat(program.functions().get("main").statementBlock())
+        assertThat(program.functions().get("main").statementBlock().statements())
                 .element(0)
                 .matches(s -> s.equals(new VariableDeclaration(
                         new IntType(),
@@ -101,11 +102,11 @@ public class ParserTest {
                         new Position(6, 5)
                 )));
 
-        assertThat(program.functions().get("main").statementBlock())
+        assertThat(program.functions().get("main").statementBlock().statements())
                 .element(1)
                 .matches(s -> s.equals(new WhileStatement(
                         new LessThan(new VariableValue("x"), new MinusExpression(new IntLiteral(5), new IntLiteral(1))),
-                        List.of(
+                        new StatementBlock(List.of(
                                 new FunctionCall(
                                         "print",
                                         List.of(new FunctionCall(
@@ -120,7 +121,7 @@ public class ParserTest {
                                         new PlusExpression(new VariableValue("x"), new IntLiteral(1)),
                                         new Position(9, 9)
                                 )
-                        ),
+                        )),
                         new Position(7, 5)
                 )));
 

@@ -5,6 +5,7 @@ import ast.FunctionCall;
 import ast.FunctionDefinition;
 import ast.Parameter;
 import ast.Program;
+import ast.StatementBlock;
 import ast.expression.AndExpression;
 import ast.expression.CastedExpression;
 import ast.expression.DictValue;
@@ -191,7 +192,7 @@ public class DefaultParser implements Parser {
     }
 
     // statementBlock = "{" {statement} "}";
-    private List<Statement> parseStatementBlock() {
+    private StatementBlock parseStatementBlock() {
         expectToken(TokenType.LEFT_CURLY_BRACKET, "Expected left curly bracket");
 
         List<Statement> statements = new ArrayList<>();
@@ -204,7 +205,7 @@ public class DefaultParser implements Parser {
 
         expectToken(TokenType.RIGHT_CURLY_BRACKET, "Expected right curly bracket");
 
-        return statements;
+        return new StatementBlock(statements);
     }
 
     // statement = ifStatement | whileStatement | forEachStatement |
@@ -232,11 +233,11 @@ public class DefaultParser implements Parser {
         Expression condition = parseExpression().orElseThrow(() -> new SyntaxError("Missing condition"));
         expectToken(TokenType.RIGHT_ROUND_BRACKET, "Expected right round bracket");
 
-        List<Statement> ifBlock = parseStatementBlock();
+        StatementBlock ifBlock = parseStatementBlock();
 
         if (token.type() == TokenType.ELSE_KEYWORD) {
             consumeToken();
-            List<Statement> elseBlock = parseStatementBlock();
+            StatementBlock elseBlock = parseStatementBlock();
             return Optional.of(new IfStatement(condition, ifBlock, elseBlock, position));
         }
 

@@ -4,6 +4,7 @@ import ast.FunctionCall;
 import ast.FunctionDefinition;
 import ast.Parameter;
 import ast.Program;
+import ast.StatementBlock;
 import ast.expression.AndExpression;
 import ast.expression.CastedExpression;
 import ast.expression.DictLiteral;
@@ -257,7 +258,7 @@ public class ParserTest {
         var program = parseProgram(tokens);
 
         // then
-        assertThat(program.functions().get("f").statementBlock())
+        assertThat(program.functions().get("f").statementBlock().statements())
                 .hasSize(1)
                 .first()
                 .isEqualTo(new ReturnStatement(
@@ -297,7 +298,7 @@ public class ParserTest {
         var program = parseProgram(tokens);
 
         // then
-        assertThat(program.functions().get("f").statementBlock())
+        assertThat(program.functions().get("f").statementBlock().statements())
                 .hasSize(1)
                 .first()
                 .isEqualTo(new ReturnStatement(
@@ -365,7 +366,7 @@ public class ParserTest {
         var program = parseProgram(tokens);
 
         // then
-        assertThat(program.functions().get("f").statementBlock())
+        assertThat(program.functions().get("f").statementBlock().statements())
                 .hasSize(1)
                 .first()
                 .isEqualTo(new ReturnStatement(
@@ -399,7 +400,7 @@ public class ParserTest {
         var program = parseProgram(tokens);
 
         // then
-        assertThat(program.functions().get("f").statementBlock())
+        assertThat(program.functions().get("f").statementBlock().statements())
                 .hasSize(1)
                 .first()
                 .isEqualTo(new ReturnStatement(
@@ -429,7 +430,7 @@ public class ParserTest {
         var program = parseProgram(tokens);
 
         // then
-        assertThat(program.functions().get("f").statementBlock())
+        assertThat(program.functions().get("f").statementBlock().statements())
                 .hasSize(1)
                 .first()
                 .isEqualTo(new ReturnStatement(
@@ -490,12 +491,12 @@ public class ParserTest {
         var program = parseProgram(tokens);
 
         // then
-        assertThat(program.functions().get("f").statementBlock())
+        assertThat(program.functions().get("f").statementBlock().statements())
                 .first()
                 .asInstanceOf(InstanceOfAssertFactories.type(WhileStatement.class))
                 .matches(s -> s.condition().equals(new LessThanOrEqual(new VariableValue("x"), new IntLiteral(5))))
                 .extracting(WhileStatement::statementBlock)
-                .matches(block -> block.size() == 3);
+                .matches(block -> block.statements().size() == 3);
     }
 
     @Test
@@ -544,7 +545,7 @@ public class ParserTest {
         var program = parseProgram(tokens);
 
         // then
-        assertThat(program.functions().get("f").statementBlock())
+        assertThat(program.functions().get("f").statementBlock().statements())
                 .first()
                 .asInstanceOf(InstanceOfAssertFactories.type(ForeachStatement.class))
                 .matches(s -> s.varType().equals(new StringType()))
@@ -554,7 +555,7 @@ public class ParserTest {
                         new StringLiteral("y"), new IntLiteral(2)
                 ))))
                 .extracting(ForeachStatement::statementBlock)
-                .matches(block -> block.size() == 1);
+                .matches(block -> block.statements().size() == 1);
     }
 
     @Test
@@ -605,14 +606,14 @@ public class ParserTest {
         var program = parseProgram(tokens);
 
         // then
-        assertThat(program.functions().get("f").statementBlock())
+        assertThat(program.functions().get("f").statementBlock().statements())
                 .first()
                 .asInstanceOf(InstanceOfAssertFactories.type(IfStatement.class))
                 .matches(s -> s.condition().equals(new GreaterThan(new VariableValue("x"), new StringLiteral("abc"))))
                 .extracting(s -> tuple(s.ifBlock(), s.elseBlock()))
                 .matches(t -> t.equals(tuple(
-                        List.of(new FunctionCall("a", Collections.emptyList(), new Position(2, 4))),
-                        List.of(new FunctionCall("b", Collections.emptyList(), new Position(4, 4)))
+                        new StatementBlock(List.of(new FunctionCall("a", Collections.emptyList(), new Position(2, 4)))),
+                        new StatementBlock(List.of(new FunctionCall("b", Collections.emptyList(), new Position(4, 4))))
                 )));
     }
 
@@ -668,21 +669,21 @@ public class ParserTest {
         var program = parseProgram(tokens);
 
         // then
-        assertThat(program.functions().get("f").statementBlock())
+        assertThat(program.functions().get("f").statementBlock().statements())
                 .element(0)
                 .asInstanceOf(InstanceOfAssertFactories.type(VariableDeclaration.class))
                 .matches(s -> s.name().equals("some_dict"))
                 .matches(s -> s.type().equals(new DictType(new StringType(), new IntType())))
                 .matches(s -> s.value().equals(new DictLiteral(Map.of(new StringLiteral("a"), new IntLiteral(1)))));
 
-        assertThat(program.functions().get("f").statementBlock())
+        assertThat(program.functions().get("f").statementBlock().statements())
                 .element(1)
                 .asInstanceOf(InstanceOfAssertFactories.type(VariableDeclaration.class))
                 .matches(s -> s.name().equals("x1"))
                 .matches(s -> s.type().equals(new IntType()))
                 .matches(s -> s.value().equals(Null.getInstance()));
 
-        assertThat(program.functions().get("f").statementBlock())
+        assertThat(program.functions().get("f").statementBlock().statements())
                 .element(2)
                 .asInstanceOf(InstanceOfAssertFactories.type(VariableDeclaration.class))
                 .matches(s -> s.name().equals("x2"))

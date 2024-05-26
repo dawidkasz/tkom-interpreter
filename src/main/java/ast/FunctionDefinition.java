@@ -1,6 +1,5 @@
 package ast;
 
-import ast.statement.Statement;
 import ast.type.Type;
 import lexer.Position;
 
@@ -10,7 +9,7 @@ public record FunctionDefinition(
         Type returnType,
         String name,
         List<Parameter> parameters,
-        List<Statement> statementBlock,
+        StatementBlock statementBlock,
         Position position
 ) implements AstNode, Declaration {
     @Override

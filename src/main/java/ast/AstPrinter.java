@@ -78,12 +78,7 @@ public class AstPrinter implements AstVisitor {
             }
 
             print("body=[");
-            withIndentation(() ->
-                    def.statementBlock().forEach(statement -> {
-                        print("\n");
-                        statement.accept(this);
-                    })
-            );
+            withIndentation(() -> def.statementBlock().accept(this));
             if (def.statementBlock().isEmpty()) {
                 System.out.print("]");
             } else {
@@ -130,12 +125,7 @@ public class AstPrinter implements AstVisitor {
             withoutIndentationForNextLine(() -> whileStatement.condition().accept(this));
             print("\n");
             print("body=[");
-            withIndentation(() ->
-                    whileStatement.statementBlock().forEach(statement -> {
-                        print("\n");
-                        statement.accept(this);
-                    })
-            );
+            withIndentation(() -> whileStatement.statementBlock().accept(this));
             if (whileStatement.statementBlock().isEmpty()) {
                 System.out.print("]");
             } else {
@@ -157,12 +147,7 @@ public class AstPrinter implements AstVisitor {
             withoutIndentationForNextLine(() -> foreachStatement.iterable().accept(this));
             print("\n");
             print("body=[");
-            withIndentation(() ->
-                    foreachStatement.statementBlock().forEach(statement -> {
-                        print("\n");
-                        statement.accept(this);
-                    })
-            );
+            withIndentation(() -> foreachStatement.statementBlock().accept(this));
             if (foreachStatement.statementBlock().isEmpty()) {
                 System.out.print("]");
             } else {
@@ -182,12 +167,7 @@ public class AstPrinter implements AstVisitor {
             withoutIndentationForNextLine(() -> ifStatement.condition().accept(this));
             print("\n");
             print("ifBody=[");
-            withIndentation(() ->
-                    ifStatement.ifBlock().forEach(statement -> {
-                        print("\n");
-                        statement.accept(this);
-                    })
-            );
+            withIndentation(() -> ifStatement.ifBlock().accept(this));
             if (ifStatement.ifBlock().isEmpty()) {
                 System.out.print("]");
             } else {
@@ -198,12 +178,7 @@ public class AstPrinter implements AstVisitor {
             if (ifStatement.elseBlock() != null) {
                 print("\n");
                 print("elseBody=[");
-                withIndentation(() ->
-                        ifStatement.elseBlock().forEach(statement -> {
-                            print("\n");
-                            statement.accept(this);
-                        })
-                );
+                withIndentation(() -> ifStatement.elseBlock().accept(this));
                 if (ifStatement.elseBlock().isEmpty()) {
                     System.out.print("]");
                 } else {
@@ -355,6 +330,14 @@ public class AstPrinter implements AstVisitor {
             print("\n");
         });
         print(")");
+    }
+
+    @Override
+    public void visit(StatementBlock statementBlock) {
+        statementBlock.statements().forEach(statement -> {
+            print("\n");
+            statement.accept(this);
+        });
     }
 
     @Override

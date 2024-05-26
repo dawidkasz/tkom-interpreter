@@ -67,4 +67,5 @@ public interface AstVisitor {
     void visit(NotEqual notEqual);
     void visit(UnaryMinusExpression unaryMinusExpression);
     void visit(VariableDeclaration variableDeclaration);
+    void visit(StatementBlock statementBlock);
 }
