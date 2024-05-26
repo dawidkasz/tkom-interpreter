@@ -1,48 +1,103 @@
 import ast.AstPrinter;
+import ast.Program;
+import executor.Executor;
 import lexer.DefaultLexer;
-import lexer.characterprovider.StringCharacterProvider;
-import parser.DefaultParser;
+import lexer.characterprovider.FileCharacterProvider;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.ParseException;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
 public class Interpreter {
     public static void main(String[] args) {
-        var input1 = """
-        int abc = 100;
+        Interpreter interpreter = new Interpreter();
+        interpreter.run(args);
+    }
 
-        int sq(int a, int b) {
-            return a * a + b * b;
-        }
-        
-        void main() {
-            int x = 1;
-            int y = 2;
-            
-            while (x + y <= abc) {
-                print(sq(x, y) as string);
-                x = x + 2;
-                y = y * y;
+    private void run(String[] args) {
+        Options options = buildCliOptions();
+
+        CommandLineParser parser = new org.apache.commons.cli.DefaultParser();
+        HelpFormatter formatter = new HelpFormatter();
+
+        try {
+            CommandLine cmd = parser.parse(options, args);
+
+            if (cmd.hasOption("h")) {
+                displayHelp(formatter, options);
+                System.exit(0);
             }
-        }
-        """;
 
-        var input2 = """
-        void main() {
-            dict[string, float] someDict = {"a": 1.0, "b": 2.0};
-        
-            foreach(string x : someDict) {
-                if (someDict[x] < 1.5) {
-                    print("less");
-                } else {
-                    print("more");
-                }
+            String[] positionalArgs = cmd.getArgs();
+            if (positionalArgs.length == 0) {
+                displayHelp(formatter, options);
+                System.exit(1);
             }
+
+            String inputFilePath = positionalArgs[0];
+
+            Program program = buildProgram(inputFilePath);
+
+            if (cmd.hasOption("display-ast")) {
+                new AstPrinter().visit(program);
+                System.exit(0);
+            }
+
+            Executor executor = new Executor();
+            executor.visit(program);
+
+        } catch (ParseException e) {
+            System.out.println(e.getMessage());
+            displayHelp(formatter, options);
+            System.exit(1);
         }
-        """;
+    }
 
-        var parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input1)));
+    private Options buildCliOptions() {
+        Options options = new Options();
 
-        var program = parser.parseProgram();
+        Option help = Option.builder()
+                .option("h")
+                .longOpt("help")
+                .desc("Display help")
+                .optionalArg(true)
+                .numberOfArgs(0)
+                .build();
 
-        var printer = new AstPrinter();
-        printer.visit(program);
+        Option displayAst = Option.builder()
+                .longOpt("display-ast")
+                .desc("Display program abstract syntax tree")
+                .optionalArg(true)
+                .numberOfArgs(0)
+                .build();
+
+        options.addOption(help).addOption(displayAst);
+
+        return options;
+    }
+
+    private Program buildProgram(String inputFilePath) {
+        Program program = null;
+
+        try (var characterProvider = new FileCharacterProvider(inputFilePath)) {
+            var programParser = new parser.DefaultParser(new DefaultLexer(characterProvider));
+            program = programParser.parseProgram();
+        } catch (FileNotFoundException e) {
+            System.out.println("File not found: " + inputFilePath);
+            System.exit(1);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return program;
+    }
+
+    private void displayHelp(HelpFormatter formatter, Options options) {
+        formatter.printHelp("java -jar <program.jar> [input file path]", options);
     }
 }

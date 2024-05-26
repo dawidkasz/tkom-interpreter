@@ -15,13 +15,8 @@ public class FileCharacterProvider implements CharacterProvider, AutoCloseable {
     private char nextChar;
     private boolean isEndOfFile = false;
 
-    public FileCharacterProvider(String filePath) {
-        try {
-            this.fileReader = new FileReader(filePath);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException();
-        }
-
+    public FileCharacterProvider(String filePath) throws FileNotFoundException {
+        this.fileReader = new FileReader(filePath);
         advance();
     }
 
