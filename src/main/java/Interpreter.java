@@ -1,6 +1,7 @@
 import ast.AstPrinter;
 import ast.Program;
-import executor.Executor;
+import executor.DefaultProgramExecutor;
+import executor.ProgramExecutor;
 import lexer.DefaultLexer;
 import lexer.characterprovider.FileCharacterProvider;
 import org.apache.commons.cli.CommandLineParser;
@@ -48,8 +49,8 @@ public class Interpreter {
                 System.exit(0);
             }
 
-            Executor executor = new Executor();
-            executor.visit(program);
+            ProgramExecutor executor = new DefaultProgramExecutor();
+            executor.execute(program);
 
         } catch (ParseException e) {
             System.out.println(e.getMessage());

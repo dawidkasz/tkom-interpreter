@@ -1,4 +1,4 @@
-int abc = 100;
+int abc = ((1 + 2 * 3.0 as int ) + null)?;
 
 int sq(int a, int b) {
     return a * a + b * b;
