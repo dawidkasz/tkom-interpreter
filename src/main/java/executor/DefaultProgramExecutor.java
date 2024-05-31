@@ -178,13 +178,17 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
             } else if (outType.equals(new StringType())) {
                 lastResult.store(String.valueOf(value));
             }
-         }else if (clazz.equals(String.class)) {
+         } else if (clazz.equals(String.class)) {
             if (outType.equals(new IntType())) {
                 lastResult.store(Integer.valueOf((String) value));
             } else if (outType.equals(new FloatType())) {
                 lastResult.store(Float.valueOf((String) value));
             } else if (outType.equals(new StringType())) {
                 lastResult.store(value);
+            }
+        } else if (clazz.equals(Null.class)) {
+            if (outType.equals(new StringType())) {
+                lastResult.store(value.toString());
             }
         }
     }
@@ -232,9 +236,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         minusExpression.right().accept(this);
         var right = lastResult.fetchAndReset();
 
-        if (left.equals(Null.getInstance()) || right.equals(Null.getInstance())) {
-            throw new NullException();
-        }
+        assertNotNull(left);
+        assertNotNull(right);
 
         if (validateTypes(left, right, Integer.class)) {
             lastResult.store((Integer) left - (Integer) right);
@@ -296,9 +299,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         plusExpression.right().accept(this);
         var right = lastResult.fetchAndReset();
 
-        if (left.equals(Null.getInstance()) || right.equals(Null.getInstance())) {
-            throw new NullException();
-        }
+        assertNotNull(left);
+        assertNotNull(right);
 
         if (validateTypes(left, right, Integer.class)) {
             lastResult.store((Integer) left + (Integer) right);
@@ -311,8 +313,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         }
     }
 
-    private static class NullException extends RuntimeException {
-    }
+
 
     private boolean validateTypes(Object o1, Object o2, Class<?> clazz) {
         return o1.getClass().equals(clazz) && o1.getClass().equals(o2.getClass());
@@ -384,5 +385,14 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(StatementBlock statementBlock) {
         statementBlock.statements().forEach(statement -> statement.accept(this));
+    }
+
+    private void assertNotNull(Object value) {
+        if (value.equals(Null.getInstance())) {
+            throw new NullException();
+        }
+    }
+
+    public static class NullException extends RuntimeException {
     }
 }

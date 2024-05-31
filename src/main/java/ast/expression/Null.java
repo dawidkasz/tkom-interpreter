@@ -15,4 +15,9 @@ public final class Null implements Expression {
     public void accept(AstVisitor visitor) {
         visitor.visit(this);
     }
+
+    @Override
+    public String toString() {
+        return "null";
+    }
 }

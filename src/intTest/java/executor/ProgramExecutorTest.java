@@ -78,9 +78,11 @@ public class ProgramExecutorTest {
                     string x = "1";
                     int y = 2;
                     float z = 3.0;
+                    int t = null;
                     print(x);
                     print(y as string);
                     print(z as string);
+                    print(t as string);
                 }
                 """;
 
@@ -88,7 +90,7 @@ public class ProgramExecutorTest {
         String capturedOutput = executeProgramAndCaptureOutput(program);
 
         // then
-        assertThat(capturedOutput).isEqualTo("1\n2\n3.0");
+        assertThat(capturedOutput).isEqualTo("1\n2\n3.0\nnull");
     }
 
     @ParameterizedTest
@@ -132,6 +134,28 @@ public class ProgramExecutorTest {
 
         // then
         assertThat(capturedOutput).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "1 + null",
+            "null - null",
+            "null + null",
+            "null",
+    })
+    void should_nullify_whole_expression_when_nullable_operator_is_used(String expression) {
+        // given
+        String program = String.format("""               
+                void main() {
+                    print(((%s)?) as string);
+                }
+                """, expression);
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("null");
     }
 
     private String executeProgramAndCaptureOutput(String input) {
