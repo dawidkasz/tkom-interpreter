@@ -39,6 +39,7 @@ import ast.statement.WhileStatement;
 import ast.type.FloatType;
 import ast.type.IntType;
 import ast.type.StringType;
+import com.sun.jdi.IntegerType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -61,13 +62,13 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     private void executeBuiltinPrint() {
         var context = callStack.peek();
-
         Object value = context.findVar("arg0");
+
         if (!value.getClass().equals(String.class)) {
             throw new RuntimeException("Invalid print arg");
         }
 
-        System.out.print((String) value);
+        System.out.println((String) value);
 
         callStack.pop();
     }
@@ -86,6 +87,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
             globalScope.assign(varName, lastResult.fetchAndReset());
         });
 
+        callStack.push(new FunctionCallContext("main"));
         program.functions().get("main").statementBlock().accept(this);
     }
 
@@ -176,6 +178,14 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
             } else if (outType.equals(new StringType())) {
                 lastResult.store(String.valueOf(value));
             }
+         }else if (clazz.equals(String.class)) {
+            if (outType.equals(new IntType())) {
+                lastResult.store(Integer.valueOf((String) value));
+            } else if (outType.equals(new FloatType())) {
+                lastResult.store(Float.valueOf((String) value));
+            } else if (outType.equals(new StringType())) {
+                lastResult.store(value);
+            }
         }
     }
 
@@ -216,6 +226,23 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(MinusExpression minusExpression) {
+        minusExpression.left().accept(this);
+        var left = lastResult.fetchAndReset();
+
+        minusExpression.right().accept(this);
+        var right = lastResult.fetchAndReset();
+
+        if (left.equals(Null.getInstance()) || right.equals(Null.getInstance())) {
+            throw new NullException();
+        }
+
+        if (validateTypes(left, right, Integer.class)) {
+            lastResult.store((Integer) left - (Integer) right);
+        } else if (validateTypes(left, right, Float.class)) {
+            lastResult.store((Float) left - (Float) right);
+        } else {
+            throw new RuntimeException("types do not match");
+        }
     }
 
     @Override
@@ -257,7 +284,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(VariableValue variableValue) {
-
+        var value = callStack.peek().findVar(variableValue.varName());
+        lastResult.store(value);
     }
 
     @Override
@@ -336,7 +364,21 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(VariableDeclaration variableDeclaration) {
+        FunctionCallContext context = callStack.peek();
 
+        variableDeclaration.value().accept(this);
+        Object value = lastResult.fetchAndReset();
+
+        if (
+                value.getClass().equals(Integer.class) && !variableDeclaration.type().equals(new IntType()) ||
+                value.getClass().equals(String.class) && !variableDeclaration.type().equals(new StringType()) ||
+                value.getClass().equals(Float.class) && !variableDeclaration.type().equals(new FloatType())
+        ) {
+            throw new RuntimeException("Types do not match");
+        }
+
+
+        context.setVar(variableDeclaration.name(), value);
     }
 
     @Override
