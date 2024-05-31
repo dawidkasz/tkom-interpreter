@@ -149,6 +149,10 @@ public class SemanticChecker implements AstVisitor {
 
     @Override
     public void visit(FunctionCall functionCall) {
+        if (functionCall.functionName().equals("print")) {
+            return;
+        }
+
         FunctionDefinition funDef = Optional.ofNullable(functions.get(functionCall.functionName()))
                 .orElseThrow(() -> new SemanticException(String.format("Function %s is not defined", functionCall.functionName())));
 
@@ -341,15 +345,19 @@ public class SemanticChecker implements AstVisitor {
     }
 
     private void assertTypesMatch(Type t1, Type t2, Position position) {
-        if (!t1.equals(t2) && !t1.equals(new NullAnyType()) && !t2.equals(new NullAnyType())) {
+        if (!typesMatch(t1, t2)) {
             throw new TypesMismatchException(t1, t2, position);
         }
     }
 
     private void assertTypesMatch(Type t1, Type t2) {
-        if (!t1.equals(t2) && !t1.equals(new NullAnyType()) && !t2.equals(new NullAnyType())) {
+        if (!typesMatch(t1, t2)) {
             throw new TypesMismatchException(t1, t2);
         }
+    }
+
+    private boolean typesMatch(Type t1, Type t2) {
+        return t1.equals(t2) || t1.equals(new NullAnyType()) || t2.equals(new NullAnyType());
     }
 
 

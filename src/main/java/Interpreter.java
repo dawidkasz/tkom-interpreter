@@ -17,13 +17,16 @@ import java.io.IOException;
 
 public class Interpreter {
     private final ProgramExecutor executor;
+    private final SemanticChecker semanticChecker;
 
-    public Interpreter(ProgramExecutor executor) {
+
+    public Interpreter(ProgramExecutor executor, SemanticChecker semanticChecker) {
         this.executor = executor;
+        this.semanticChecker = semanticChecker;
     }
 
     public static void main(String[] args) {
-        Interpreter interpreter = new Interpreter(new DefaultProgramExecutor());
+        Interpreter interpreter = new Interpreter(new DefaultProgramExecutor(), new SemanticChecker());
         interpreter.run(args);
     }
 
@@ -64,11 +67,15 @@ public class Interpreter {
         }
 
         try {
-            executor.execute(program);
+            semanticChecker.visit(program);
         } catch (SemanticChecker.SemanticException e) {
             System.err.printf("Compilation error: %s%n", e.getMessage());
+            System.exit(1);
         }
-        catch (RuntimeException e) {
+
+        try {
+            executor.execute(program);
+        } catch (RuntimeException e) {
             System.err.printf("Runtime error: %s%n", e.getMessage());
             System.exit(1);
         }

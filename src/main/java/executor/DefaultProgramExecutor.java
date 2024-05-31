@@ -55,13 +55,11 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     private ResultStore<Object> lastResult;
     private Scope globalScope;
     private boolean shouldReturnFromCurrentFunctionCall = false;
-    private final SemanticChecker semanticChecker;
 
     public DefaultProgramExecutor() {
         builtinFunctions = Map.of(
                 "print", this::executeBuiltinPrint
         );
-        semanticChecker = new SemanticChecker();
     }
 
     private void executeBuiltinPrint() {
@@ -79,7 +77,6 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void execute(Program program) {
-        semanticChecker.visit(program);
         resetState();
         visit(program);
     }
