@@ -40,9 +40,11 @@ import ast.type.FloatType;
 import ast.type.IntType;
 import ast.type.StringType;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
+import java.util.List;
 
 public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     private final Stack<FunctionCallContext> callStack = new Stack<>();
@@ -59,13 +61,13 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     private void executeBuiltinPrint() {
         var context = callStack.peek();
-        Object value = context.findVar("arg0");
+        Variable arg0 = context.findVar("arg0");
 
-        if (!value.getClass().equals(String.class)) {
-            throw new RuntimeException("Invalid print arg");
+        if (!arg0.getType().equals(String.class)) {
+            throw new RuntimeException("Invalid print arg type " + arg0.getClass());
         }
 
-        System.out.println((String) value);
+        System.out.println((String) arg0.getValue());
 
         callStack.pop();
     }
@@ -89,7 +91,11 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
         program.globalVariables().forEach((varName, varDec) -> {
             varDec.value().accept(this);
-            globalScope.assign(varName, lastResult.fetchAndReset());
+            globalScope.declareVar(new Variable(
+                    varName,
+                    Variable.getInterpreterType(varDec.type()),
+                    lastResult.fetchAndReset()
+            ));
         });
 
         callStack.push(new FunctionCallContext("main"));
@@ -102,7 +108,18 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(VariableAssignment variableAssignment) {
+        FunctionCallContext context = callStack.peek();
 
+        var varType = context.findVar(variableAssignment.varName()).getType();
+
+        variableAssignment.expression().accept(this);
+        Object newValue = lastResult.fetchAndReset();
+
+        if (newValue.equals(Null.getInstance()) || varType.equals(newValue.getClass())) {
+            context.assignVar(variableAssignment.varName(), newValue);
+        } else {
+            throw new RuntimeException("Invalid variable assignment");
+        }
     }
 
     @Override
@@ -127,7 +144,6 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(ReturnStatement returnStatement) {
-
     }
 
     @Override
@@ -139,14 +155,18 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
         Runnable builtinFunctionDef = builtinFunctions.get(functionCall.functionName());
         if (builtinFunctionDef != null) {
-            Map<String, Object> arguments = new HashMap<>();
+            List<Variable> arguments = new ArrayList<>();
 
             for(int idx = 0; idx < functionCall.arguments().size(); idx++) {
                 functionCall.arguments().get(idx).accept(this);
-                arguments.put("arg" + idx, lastResult.fetchAndReset());
+
+                arguments.add(new Variable("arg" + idx, String.class, lastResult.fetchAndReset()));
             }
 
-            callStack.push(new FunctionCallContext(functionCall.functionName(), new Scope(arguments)));
+            callStack.push(new FunctionCallContext(
+                    functionCall.functionName(),
+                    new Scope(arguments)
+            ));
             builtinFunctionDef.run();
             return;
         }
@@ -322,8 +342,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(VariableValue variableValue) {
-        var value = callStack.peek().findVar(variableValue.varName());
-        lastResult.store(value);
+        Object varValue = callStack.peek().findVar(variableValue.varName()).getValue();
+        lastResult.store(varValue);
     }
 
     @Override
@@ -347,8 +367,6 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
             throw new RuntimeException("types do not match");
         }
     }
-
-
 
     private boolean validateMatchingTypes(Object o1, Object o2, Class<?> clazz) {
         return o1.getClass().equals(clazz) && o1.getClass().equals(o2.getClass());
@@ -415,15 +433,18 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         Object value = lastResult.fetchAndReset();
 
         if (
-                value.getClass().equals(Integer.class) && !variableDeclaration.type().equals(new IntType()) ||
+                !value.equals(Null.getInstance()) && (value.getClass().equals(Integer.class) && !variableDeclaration.type().equals(new IntType()) ||
                 value.getClass().equals(String.class) && !variableDeclaration.type().equals(new StringType()) ||
-                value.getClass().equals(Float.class) && !variableDeclaration.type().equals(new FloatType())
+                value.getClass().equals(Float.class) && !variableDeclaration.type().equals(new FloatType()))
         ) {
             throw new RuntimeException("Types do not match");
         }
 
-
-        context.setVar(variableDeclaration.name(), value);
+        context.declareVar(new Variable(
+                variableDeclaration.name(),
+                Variable.getInterpreterType(variableDeclaration.type()),
+                value
+        ));
     }
 
     @Override

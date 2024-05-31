@@ -1,41 +1,47 @@
 package executor;
 
+import ast.expression.Null;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.Optional;
 
 final class Scope {
-    private final Map<String, Object> variables;
+    private final Map<String, Variable> variables = new HashMap<>();
 
     Scope() {
-        variables = new HashMap<>();
     }
 
-    Scope(Map<String, Object> variables) {
-        this.variables = new HashMap<>(variables);
+    Scope(List<Variable> vars) {
+        vars.forEach(var -> variables.put(var.getName(), var));
     }
 
-    public void assign(String varName, Object value) {
-        variables.put(varName, value);
+    public void declareVar(Variable newVar) {
+        if (variables.containsKey(newVar.getName())) {
+            throw new IllegalArgumentException(
+                    String.format("Variable %s already defined", newVar.getName()));
+        }
+
+        variables.put(newVar.getName(), newVar);
     }
 
-    public Object get(String varName) {
+    public void assignVar(String varName, Object value) {
+        Variable var = Optional.ofNullable(variables.get(varName))
+                .orElseThrow(() -> new IllegalArgumentException("Variable " + varName + " is not defined"));
+
+        if (var.getType() != value.getClass() && !value.equals(Null.getInstance())) {
+            throw new IllegalArgumentException("Can't assign variable, because types don't match");
+        }
+
+        var.setValue(value);
+    }
+
+    public Variable get(String varName) {
         return variables.get(varName);
     }
 
     public boolean contains(String varName) {
         return variables.containsKey(varName);
-    }
-
-    static class Builder {
-        private final Map<String, Object> variables = new HashMap<>();
-
-        Builder var(String name, Object value) {
-            variables.put(name, value);
-            return this;
-        }
-
-        Scope build() {
-            return new Scope(variables);
-        }
     }
 }

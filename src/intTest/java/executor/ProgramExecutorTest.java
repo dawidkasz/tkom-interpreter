@@ -218,6 +218,34 @@ public class ProgramExecutorTest {
         assertThat(capturedOutput).isEqualTo(expected);
     }
 
+    @Test
+    void should_assign_variables() {
+        // given
+        String program = """               
+                void main() {
+                    int a = 10;
+                    float b = 1.0;
+                    string c;
+                    int d = null;
+
+                    a = 5;
+                    b = null;
+                    c = "xyz";
+                    d = 1;
+
+                    print(a as string);
+                    print(b as string);
+                    print(c as string);
+                    print(d as string);
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("5\nnull\nxyz\n1");
+    }
 
 
     private String executeProgramAndCaptureOutput(String input) {

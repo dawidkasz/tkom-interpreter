@@ -20,24 +20,33 @@ final class FunctionCallContext {
         this.blockScopes.add(initialScope);
     }
 
-    public Object findVar(String varName) {
+    public String getFunctionName() {
+        return functionName;
+    }
+
+    public Variable findVar(String varName) {
         return findVarScope(varName).orElseThrow().get(varName);
     }
 
-    public void setVar(String varName, Object value) {
+    public void declareVar(Variable newVar) {
         if (blockScopes.isEmpty()) {
             blockScopes.push(new Scope());
         }
 
-        var scope = blockScopes.peek();
+        Scope currentScope = blockScopes.peek();
 
-        assert scope != null;
-        scope.assign(varName, value);
+        assert currentScope != null;
+
+        if (currentScope.contains(newVar.getName())) {
+            throw new RuntimeException("Variable already defined in current scope: " + newVar);
+        }
+
+        currentScope.declareVar(newVar);
     }
 
-    public void updateVar(String varName, Object value) {
+    public void assignVar(String varName, Object value) {
         Scope scope = findVarScope(varName).orElseThrow();
-        scope.assign(varName, value);
+        scope.assignVar(varName, value);
     }
 
 
