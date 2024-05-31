@@ -229,6 +229,30 @@ public class ProgramExecutorTest {
 
     @ParameterizedTest
     @CsvSource({
+            "10, 0",
+            "0, 1",
+            "\"\", 1",
+            "\"x\", 0",
+            "1 < 2, 0",
+            "2.0 <= 1.0, 1",
+    })
+    void should_execute_negation_expression(String expression, String expected) {
+        // given
+        String program = String.format("""               
+                void main() {
+                    print((!(%s)) as string);
+                }
+                """, expression);
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
             "8, 3, 2",
             "8.0, 3.0, 2.0",
     })

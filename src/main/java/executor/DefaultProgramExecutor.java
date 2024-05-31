@@ -510,7 +510,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(NegationExpression negationExpression) {
+        negationExpression.expression().accept(this);
+        var value = lastResult.fetchAndReset();
 
+        lastResult.store(booleanToInteger(!isTruthy(value)));
     }
 
     @Override
