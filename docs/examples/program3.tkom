@@ -1,0 +1,40 @@
+int x = 1;
+int y = null;
+int y = ((2 + null)? + 1)?;
+
+int f1(int a, int a) {
+    return 1;
+}
+
+string f2() {
+    return "a";
+}
+
+int f3() {
+    return 1;
+}
+
+string f4() {
+    if (1) {
+        return null;
+    }
+
+    return "";
+}
+
+void main() {
+    int x = 1;
+    int x2 = "1" as int;
+
+    if (1.0 < 2.0) {
+        x = 2;
+    }
+
+    while (1 > 2) {
+    }
+
+    string z = f2();
+
+    f1(1, 1);
+
+}

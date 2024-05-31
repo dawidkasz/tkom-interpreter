@@ -1,13 +1,13 @@
 package executor;
 
-final class ResultStore {
-    private Object lastResult = null;
+final class ResultStore<T> {
+    private T lastResult = null;
 
-    public void store(Object value) {
+    public void store(T value) {
         lastResult = value;
     }
 
-    public Object fetchAndReset() {
+    public T fetchAndReset() {
         if (lastResult == null) {
             throw new IllegalStateException("Last result is empty");
         }

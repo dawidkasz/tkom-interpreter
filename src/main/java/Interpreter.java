@@ -2,6 +2,7 @@ import ast.AstPrinter;
 import ast.Program;
 import executor.DefaultProgramExecutor;
 import executor.ProgramExecutor;
+import executor.SemanticChecker;
 import lexer.DefaultLexer;
 import lexer.characterprovider.FileCharacterProvider;
 import org.apache.commons.cli.CommandLineParser;
@@ -64,8 +65,11 @@ public class Interpreter {
 
         try {
             executor.execute(program);
-        } catch (RuntimeException e) {
+        } catch (SemanticChecker.SemanticException e) {
             System.err.printf("Compilation error: %s%n", e.getMessage());
+        }
+        catch (RuntimeException e) {
+            System.err.printf("Runtime error: %s%n", e.getMessage());
             System.exit(1);
         }
     }

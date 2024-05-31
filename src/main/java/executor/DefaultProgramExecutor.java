@@ -52,14 +52,16 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     private final Stack<FunctionCallContext> callStack = new Stack<>();
     private final Map<String, FunctionDefinition> functions = new HashMap<>();
     private final Map<String, Runnable> builtinFunctions;
-    private ResultStore lastResult;
+    private ResultStore<Object> lastResult;
     private Scope globalScope;
     private boolean shouldReturnFromCurrentFunctionCall = false;
+    private final SemanticChecker semanticChecker;
 
     public DefaultProgramExecutor() {
         builtinFunctions = Map.of(
                 "print", this::executeBuiltinPrint
         );
+        semanticChecker = new SemanticChecker();
     }
 
     private void executeBuiltinPrint() {
@@ -77,6 +79,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void execute(Program program) {
+        semanticChecker.visit(program);
         resetState();
         visit(program);
     }
@@ -85,7 +88,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         callStack.clear();
         functions.clear();
         globalScope = new Scope();
-        lastResult = new ResultStore();
+        lastResult = new ResultStore<>();
     }
 
     @Override
