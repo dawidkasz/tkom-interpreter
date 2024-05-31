@@ -158,6 +158,68 @@ public class ProgramExecutorTest {
         assertThat(capturedOutput).isEqualTo("null");
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "10, 2, 5",
+            "18.0, 4.5, 4.0",
+    })
+    void should_execute_divide_expression(String a, String b, String expected) {
+        // given
+        String program = String.format("""               
+                void main() {
+                    print((%s / %s) as string);
+                }
+                """, a, b);
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "8, 3, 2",
+            "8.0, 3.0, 2.0",
+    })
+    void should_execute_modulo_expression(String a, String b, String expected) {
+        // given
+        String program = String.format("""               
+                void main() {
+                    print((%s %% %s) as string);
+                }
+                """, a, b);
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "7, -7",
+            "8.25, -8.25",
+    })
+    void should_execute_unary_minus_expression(String expression, String expected) {
+        // given
+        String program = String.format("""               
+                void main() {
+                    print((-(%s)) as string);
+                }
+                """, expression);
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo(expected);
+    }
+
+
+
     private String executeProgramAndCaptureOutput(String input) {
         Parser parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input)));
         Program program = parser.parseProgram();

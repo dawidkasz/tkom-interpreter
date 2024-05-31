@@ -39,20 +39,17 @@ import ast.statement.WhileStatement;
 import ast.type.FloatType;
 import ast.type.IntType;
 import ast.type.StringType;
-import com.sun.jdi.IntegerType;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
-import java.util.List;
 
 public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     private final Stack<FunctionCallContext> callStack = new Stack<>();
-    private final Scope globalScope = new Scope();
-    private final LastResult lastResult = new LastResult();
     private final Map<String, FunctionDefinition> functions = new HashMap<>();
     private final Map<String, Runnable> builtinFunctions;
+    private LastResult lastResult;
+    private Scope globalScope;
 
     public DefaultProgramExecutor() {
         builtinFunctions = Map.of(
@@ -75,7 +72,15 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void execute(Program program) {
+        resetState();
         visit(program);
+    }
+
+    private void resetState() {
+        callStack.clear();
+        functions.clear();
+        globalScope = new Scope();
+        lastResult = new LastResult();
     }
 
     @Override
@@ -151,7 +156,22 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(DivideExpression divideExpression) {
+        divideExpression.left().accept(this);
+        var left = lastResult.fetchAndReset();
 
+        divideExpression.right().accept(this);
+        var right = lastResult.fetchAndReset();
+
+        assertNotNull(left);
+        assertNotNull(right);
+
+        if (validateMatchingTypes(left, right, Integer.class)) {
+            lastResult.store((Integer) left / (Integer) right);
+        } else if (validateMatchingTypes(left, right, Float.class)) {
+            lastResult.store((Float) left / (Float) right);
+        } else {
+            throw new RuntimeException("types do not match");
+        }
     }
 
     @Override
@@ -239,9 +259,9 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         assertNotNull(left);
         assertNotNull(right);
 
-        if (validateTypes(left, right, Integer.class)) {
+        if (validateMatchingTypes(left, right, Integer.class)) {
             lastResult.store((Integer) left - (Integer) right);
-        } else if (validateTypes(left, right, Float.class)) {
+        } else if (validateMatchingTypes(left, right, Float.class)) {
             lastResult.store((Float) left - (Float) right);
         } else {
             throw new RuntimeException("types do not match");
@@ -250,7 +270,22 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(ModuloExpression moduloExpression) {
+        moduloExpression.left().accept(this);
+        var left = lastResult.fetchAndReset();
 
+        moduloExpression.right().accept(this);
+        var right = lastResult.fetchAndReset();
+
+        assertNotNull(left);
+        assertNotNull(right);
+
+        if (validateMatchingTypes(left, right, Integer.class)) {
+            lastResult.store((Integer) left % (Integer) right);
+        } else if (validateMatchingTypes(left, right, Float.class)) {
+            lastResult.store((Float) left % (Float) right);
+        } else {
+            throw new RuntimeException("types do not match");
+        }
     }
 
     @Override
@@ -261,9 +296,9 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         multiplyExpression.right().accept(this);
         var right = lastResult.fetchAndReset();
 
-        if (validateTypes(left, right, Integer.class)) {
+        if (validateMatchingTypes(left, right, Integer.class)) {
             lastResult.store((Integer) left * (Integer) right);
-        } else if (validateTypes(left, right, Float.class)) {
+        } else if (validateMatchingTypes(left, right, Float.class)) {
             lastResult.store((Float) left * (Float) right);
         } else {
             throw new RuntimeException("types do not match");
@@ -302,11 +337,11 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         assertNotNull(left);
         assertNotNull(right);
 
-        if (validateTypes(left, right, Integer.class)) {
+        if (validateMatchingTypes(left, right, Integer.class)) {
             lastResult.store((Integer) left + (Integer) right);
-        } else if (validateTypes(left, right, String.class)) {
+        } else if (validateMatchingTypes(left, right, String.class)) {
             lastResult.store((String) left + (String) right);
-        } else if (validateTypes(left, right, Float.class)) {
+        } else if (validateMatchingTypes(left, right, Float.class)) {
             lastResult.store((Float) left + (Float) right);
         } else {
             throw new RuntimeException("types do not match");
@@ -315,7 +350,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
 
 
-    private boolean validateTypes(Object o1, Object o2, Class<?> clazz) {
+    private boolean validateMatchingTypes(Object o1, Object o2, Class<?> clazz) {
         return o1.getClass().equals(clazz) && o1.getClass().equals(o2.getClass());
     }
 
@@ -360,7 +395,16 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(UnaryMinusExpression unaryMinusExpression) {
+        unaryMinusExpression.expression().accept(this);
+        var value = lastResult.fetchAndReset();
 
+        if (value.getClass().equals(Integer.class)) {
+            lastResult.store(-((Integer) value));
+        } else if (value.getClass().equals(Float.class)) {
+            lastResult.store(-((Float) value));
+        } else {
+            throw new RuntimeException("invalid type for unary minus");
+        }
     }
 
     @Override
