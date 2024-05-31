@@ -129,6 +129,14 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(WhileStatement whileStatement) {
+        whileStatement.condition().accept(this);
+        boolean shouldLoop = isTruthy(lastResult.fetchAndReset());
+
+        while (shouldLoop) {
+            whileStatement.statementBlock().accept(this);
+            whileStatement.condition().accept(this);
+            shouldLoop = isTruthy(lastResult.fetchAndReset());
+        }
     }
 
     @Override

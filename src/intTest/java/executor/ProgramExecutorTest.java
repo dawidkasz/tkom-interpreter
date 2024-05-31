@@ -296,12 +296,14 @@ public class ProgramExecutorTest {
         // given
         String program = """               
                 void main() {
+                    int tmp = 1;
+                
                     int a = 10;
                     float b = 1.0;
                     string c;
                     int d = null;
 
-                    a = 5;
+                    a = a + 5 + tmp;
                     b = null;
                     c = "xyz";
                     d = 1;
@@ -317,7 +319,7 @@ public class ProgramExecutorTest {
         String capturedOutput = executeProgramAndCaptureOutput(program);
 
         // then
-        assertThat(capturedOutput).isEqualTo("5\nnull\nxyz\n1");
+        assertThat(capturedOutput).isEqualTo("16\nnull\nxyz\n1");
     }
 
     @Test
@@ -374,6 +376,26 @@ public class ProgramExecutorTest {
 
         // then
         assertThat(capturedOutput).isEqualTo("b");
+    }
+
+    @Test
+    void should_execute_while_statement() {
+        // given
+        String program = """               
+                void main() {
+                    int x = 1;
+                    while (x <= 5) {
+                        print(x as string);
+                        x = x + 1;
+                    }
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("1\n2\n3\n4\n5");
     }
 
     private String executeProgramAndCaptureOutput(String input) {
