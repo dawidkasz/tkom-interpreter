@@ -129,7 +129,6 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(WhileStatement whileStatement) {
-
     }
 
     @Override
@@ -139,7 +138,14 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(IfStatement ifStatement) {
+        ifStatement.condition().accept(this);
+        var conditionValue = lastResult.fetchAndReset();
 
+        if (isTruthy(conditionValue)) {
+            ifStatement.ifBlock().accept(this);
+        } else if (ifStatement.elseBlock() != null) {
+            ifStatement.elseBlock().accept(this);
+        }
     }
 
     @Override

@@ -320,6 +320,62 @@ public class ProgramExecutorTest {
         assertThat(capturedOutput).isEqualTo("5\nnull\nxyz\n1");
     }
 
+    @Test
+    void should_execute_if_statement() {
+        // given
+        String program = """               
+                void main() {
+                    if (1 == 1) {
+                        print("a");
+                    }
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("a");
+    }
+
+    @Test
+    void should_not_execute_if_there_is_no_else_statement() {
+        // given
+        String program = """               
+                void main() {
+                    if (1 == 2) {
+                        print("a");
+                    }
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("");
+    }
+
+    @Test
+    void should_execute_else_statement() {
+        // given
+        String program = """               
+                void main() {
+                    if (1 == 2) {
+                        print("a");
+                    } else {
+                        print("b");
+                    }
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("b");
+    }
+
     private String executeProgramAndCaptureOutput(String input) {
         Parser parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input)));
         Program program = parser.parseProgram();
