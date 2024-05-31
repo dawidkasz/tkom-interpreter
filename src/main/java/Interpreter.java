@@ -15,8 +15,14 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class Interpreter {
+    private final ProgramExecutor executor;
+
+    public Interpreter(ProgramExecutor executor) {
+        this.executor = executor;
+    }
+
     public static void main(String[] args) {
-        Interpreter interpreter = new Interpreter();
+        Interpreter interpreter = new Interpreter(new DefaultProgramExecutor());
         interpreter.run(args);
     }
 
@@ -26,35 +32,40 @@ public class Interpreter {
         CommandLineParser parser = new org.apache.commons.cli.DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
 
+        CommandLine cmd = null;
+
         try {
-            CommandLine cmd = parser.parse(options, args);
-
-            if (cmd.hasOption("h")) {
-                displayHelp(formatter, options);
-                System.exit(0);
-            }
-
-            String[] positionalArgs = cmd.getArgs();
-            if (positionalArgs.length == 0) {
-                displayHelp(formatter, options);
-                System.exit(1);
-            }
-
-            String inputFilePath = positionalArgs[0];
-
-            Program program = buildProgram(inputFilePath);
-
-            if (cmd.hasOption("display-ast")) {
-                new AstPrinter().visit(program);
-                System.exit(0);
-            }
-
-            ProgramExecutor executor = new DefaultProgramExecutor();
-            executor.execute(program);
-
+             cmd = parser.parse(options, args);
         } catch (ParseException e) {
             System.out.println(e.getMessage());
             displayHelp(formatter, options);
+            System.exit(1);
+        }
+
+        if (cmd.hasOption("h")) {
+            displayHelp(formatter, options);
+            System.exit(0);
+        }
+
+        String[] positionalArgs = cmd.getArgs();
+        if (positionalArgs.length == 0) {
+            displayHelp(formatter, options);
+            System.exit(1);
+        }
+
+        String inputFilePath = positionalArgs[0];
+
+        Program program = buildProgram(inputFilePath);
+
+        if (cmd.hasOption("display-ast")) {
+            new AstPrinter().visit(program);
+            System.exit(0);
+        }
+
+        try {
+            executor.execute(program);
+        } catch (RuntimeException e) {
+            System.err.printf("Compilation error: %s%n", e.getMessage());
             System.exit(1);
         }
     }

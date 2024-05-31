@@ -12,10 +12,9 @@ int fib(int n) {
 
 void main() {
     int x = 1;
-    int fibVal;
 
     while (x <= 10) {
-        fibVal = fib(x);
+        int fibVal = fib(x);
         print("Fib(" + x as string + ") = " + fibVal as string);
         x = x + 1;
     }
