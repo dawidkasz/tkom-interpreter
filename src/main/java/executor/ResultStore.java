@@ -1,6 +1,6 @@
 package executor;
 
-final class LastResult {
+final class ResultStore {
     private Object lastResult = null;
 
     public void store(Object value) {

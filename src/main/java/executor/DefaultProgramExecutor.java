@@ -52,7 +52,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     private final Stack<FunctionCallContext> callStack = new Stack<>();
     private final Map<String, FunctionDefinition> functions = new HashMap<>();
     private final Map<String, Runnable> builtinFunctions;
-    private LastResult lastResult;
+    private ResultStore lastResult;
     private Scope globalScope;
     private boolean shouldReturnFromCurrentFunctionCall = false;
 
@@ -85,7 +85,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         callStack.clear();
         functions.clear();
         globalScope = new Scope();
-        lastResult = new LastResult();
+        lastResult = new ResultStore();
     }
 
     @Override
