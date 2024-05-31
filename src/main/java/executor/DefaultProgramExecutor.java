@@ -33,12 +33,14 @@ import ast.statement.DictAssignment;
 import ast.statement.ForeachStatement;
 import ast.statement.IfStatement;
 import ast.statement.ReturnStatement;
+import ast.statement.Statement;
 import ast.statement.VariableAssignment;
 import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
 import ast.type.FloatType;
 import ast.type.IntType;
 import ast.type.StringType;
+import ast.type.Type;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,6 +54,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     private final Map<String, Runnable> builtinFunctions;
     private LastResult lastResult;
     private Scope globalScope;
+    private boolean shouldReturnFromCurrentFunctionCall = false;
 
     public DefaultProgramExecutor() {
         builtinFunctions = Map.of(
@@ -158,12 +161,51 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(ReturnStatement returnStatement) {
+        returnStatement.expression().accept(this);
+        shouldReturnFromCurrentFunctionCall = true;
     }
 
     @Override
     public void visit(FunctionCall functionCall) {
         FunctionDefinition functionDef = functions.get(functionCall.functionName());
         if (functionDef != null) {
+            if (functionCall.arguments().size() != functionDef.parameters().size()) {
+                throw new RuntimeException("Invalid number of arguments in function call");
+            }
+
+            List<Variable> arguments = new ArrayList<>();
+
+            for(int idx = 0; idx < functionCall.arguments().size(); idx++) {
+                functionCall.arguments().get(idx).accept(this);
+                var argValue = lastResult.fetchAndReset();
+
+                String paramName = functionDef.parameters().get(idx).name();
+                Type paramType = functionDef.parameters().get(idx).type();
+
+                if (
+                        !Variable.getInterpreterType(paramType).equals(argValue.getClass()) &&
+                        !argValue.equals(Null.getInstance())
+                ) {
+                    throw new RuntimeException(String.format("Types mismatch between param %s and argument", paramName));
+                }
+
+                arguments.add(new Variable(
+                        paramName,
+                        Variable.getInterpreterType(functionDef.parameters().get(idx).type()),
+                        argValue
+                ));
+            }
+
+            callStack.push(new FunctionCallContext(
+                    functionCall.functionName(),
+                    new Scope(arguments)
+            ));
+
+            functionDef.statementBlock().accept(this);
+
+            callStack.pop();
+            shouldReturnFromCurrentFunctionCall = false;
+
             return;
         }
 
@@ -568,7 +610,14 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(StatementBlock statementBlock) {
-        statementBlock.statements().forEach(statement -> statement.accept(this));
+        for (int i=0; i<statementBlock.statements().size(); i++) {
+            Statement statement = statementBlock.statements().get(i);
+            statement.accept(this);
+
+            if (shouldReturnFromCurrentFunctionCall) {
+                return;
+            }
+        }
     }
 
     private void assertNotNull(Object value) {

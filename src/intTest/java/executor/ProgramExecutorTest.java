@@ -34,7 +34,7 @@ public class ProgramExecutorTest {
     @Test
     void should_execute_builtin_print() {
         // given
-        String program = """               
+        String program = """
                 void main() {
                     print("xyz");
                 }
@@ -57,7 +57,7 @@ public class ProgramExecutorTest {
     })
     void should_cast_simple_types(String input, String expected) {
         // given
-        String program = String.format("""               
+        String program = String.format("""
                 void main() {
                     print(%s as string);
                 }
@@ -73,7 +73,7 @@ public class ProgramExecutorTest {
     @Test
     void should_declare_local_variables() {
         // given
-        String program = """               
+        String program = """
                 void main() {
                     string x = "1";
                     int y = 2;
@@ -101,7 +101,7 @@ public class ProgramExecutorTest {
     })
     void should_execute_plus_expression(String type, String a, String b, String expected) {
         // given
-        String program = String.format("""               
+        String program = String.format("""
                 void main() {
                     %s x = %s + %s;
                     print(x as string);
@@ -122,7 +122,7 @@ public class ProgramExecutorTest {
     })
     void should_execute_minus_expression(String type, String a, String b, String expected) {
         // given
-        String program = String.format("""               
+        String program = String.format("""
                 void main() {
                     %s x = %s - %s;
                     print(x as string);
@@ -145,7 +145,7 @@ public class ProgramExecutorTest {
     })
     void should_nullify_whole_expression_when_nullable_operator_is_used(String expression) {
         // given
-        String program = String.format("""               
+        String program = String.format("""
                 void main() {
                     print(((%s)?) as string);
                 }
@@ -165,7 +165,7 @@ public class ProgramExecutorTest {
     })
     void should_execute_divide_expression(String a, String b, String expected) {
         // given
-        String program = String.format("""               
+        String program = String.format("""
                 void main() {
                     print((%s / %s) as string);
                 }
@@ -214,7 +214,7 @@ public class ProgramExecutorTest {
     })
     void should_execute_relational_expressions(String expression, String expected) {
         // given
-        String program = String.format("""               
+        String program = String.format("""
                 void main() {
                     print((%s) as string);
                 }
@@ -238,7 +238,7 @@ public class ProgramExecutorTest {
     })
     void should_execute_negation_expression(String expression, String expected) {
         // given
-        String program = String.format("""               
+        String program = String.format("""
                 void main() {
                     print((!(%s)) as string);
                 }
@@ -258,7 +258,7 @@ public class ProgramExecutorTest {
     })
     void should_execute_modulo_expression(String a, String b, String expected) {
         // given
-        String program = String.format("""               
+        String program = String.format("""
                 void main() {
                     print((%s %% %s) as string);
                 }
@@ -278,7 +278,7 @@ public class ProgramExecutorTest {
     })
     void should_execute_unary_minus_expression(String expression, String expected) {
         // given
-        String program = String.format("""               
+        String program = String.format("""
                 void main() {
                     print((-(%s)) as string);
                 }
@@ -294,10 +294,10 @@ public class ProgramExecutorTest {
     @Test
     void should_assign_variables() {
         // given
-        String program = """               
+        String program = """
                 void main() {
                     int tmp = 1;
-                
+
                     int a = 10;
                     float b = 1.0;
                     string c;
@@ -325,7 +325,7 @@ public class ProgramExecutorTest {
     @Test
     void should_execute_if_statement() {
         // given
-        String program = """               
+        String program = """
                 void main() {
                     if (1 == 1) {
                         print("a");
@@ -343,7 +343,7 @@ public class ProgramExecutorTest {
     @Test
     void should_not_execute_if_there_is_no_else_statement() {
         // given
-        String program = """               
+        String program = """
                 void main() {
                     if (1 == 2) {
                         print("a");
@@ -361,7 +361,7 @@ public class ProgramExecutorTest {
     @Test
     void should_execute_else_statement() {
         // given
-        String program = """               
+        String program = """
                 void main() {
                     if (1 == 2) {
                         print("a");
@@ -381,7 +381,7 @@ public class ProgramExecutorTest {
     @Test
     void should_execute_while_statement() {
         // given
-        String program = """               
+        String program = """
                 void main() {
                     int x = 1;
                     while (x <= 5) {
@@ -397,6 +397,57 @@ public class ProgramExecutorTest {
         // then
         assertThat(capturedOutput).isEqualTo("1\n2\n3\n4\n5");
     }
+
+    @Test
+    void should_execute_function_call() {
+        // given
+        String program = """
+                int addOrZero(int a, int b) {
+                    if (a == 0 || b == 0) {
+                        return 0;
+                    }
+
+                    return a + b;
+                }
+
+                void main() {
+                    int a = addOrZero(1, 0);
+                    print(a as string);
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("0");
+    }
+
+    @Test
+    void should_support_recursion() {
+        // given
+        String program = """
+                int fib(int n) {
+                    if (n <= 2) {
+                        return 1;
+                    }
+
+                    return fib(n-1) + fib(n-2);
+                }
+
+                void main() {
+                    print(fib(2) as string);
+                    print(fib(10) as string);
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("1\n55");
+    }
+
 
     private String executeProgramAndCaptureOutput(String input) {
         Parser parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input)));
