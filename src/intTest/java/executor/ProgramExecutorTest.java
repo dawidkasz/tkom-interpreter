@@ -448,6 +448,49 @@ public class ProgramExecutorTest {
         assertThat(capturedOutput).isEqualTo("1\n55");
     }
 
+    @Test
+    void should_correctly_deduce_variable_scope() {
+        // given
+        String program = """
+                string x = "a";
+                
+                void f() {
+                    string x = "b";
+                    print(x);
+                
+                    if (1) {
+                        string x = "c";
+                        print(x);
+                
+                        if (1) {
+                            x = "c2";
+                        }
+                
+                        print(x);
+                    }
+                
+                    x = "b2";
+                    print(x);
+                }
+                
+                void main() {
+                    print(x);
+                    f();
+                    print(x);
+                    x = "a2";
+                    print(x);
+                }
+                """;
+
+        String expectedOutput = "a\nb\nc\nc2\nb2\na\na2";
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo(expectedOutput);
+    }
+
 
     private String executeProgramAndCaptureOutput(String input) {
         Parser parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input)));

@@ -64,7 +64,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     private void executeBuiltinPrint() {
         var context = callStack.peek();
-        Variable arg0 = context.findVar("arg0");
+        Variable arg0 = context.findVar("arg0").orElseThrow();
 
         if (!arg0.getType().equals(String.class)) {
             throw new RuntimeException("Invalid print arg type " + arg0.getClass());
@@ -101,7 +101,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
             ));
         });
 
-        callStack.push(new FunctionCallContext("main"));
+        callStack.push(new FunctionCallContext("main", new Scope(), globalScope));
         program.functions().get("main").statementBlock().accept(this);
     }
 
@@ -113,7 +113,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     public void visit(VariableAssignment variableAssignment) {
         FunctionCallContext context = callStack.peek();
 
-        var varType = context.findVar(variableAssignment.varName()).getType();
+        var varType = context.findVar(variableAssignment.varName())
+                .or(() -> globalScope.get(variableAssignment.varName()))
+                .orElseThrow()
+                .getType();
 
         variableAssignment.expression().accept(this);
         Object newValue = lastResult.fetchAndReset();
@@ -198,7 +201,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
             callStack.push(new FunctionCallContext(
                     functionCall.functionName(),
-                    new Scope(arguments)
+                    new Scope(arguments),
+                    globalScope
             ));
 
             functionDef.statementBlock().accept(this);
@@ -221,7 +225,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
             callStack.push(new FunctionCallContext(
                     functionCall.functionName(),
-                    new Scope(arguments)
+                    new Scope(arguments),
+                    globalScope
             ));
             builtinFunctionDef.run();
             return;
@@ -378,7 +383,11 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(VariableValue variableValue) {
-        Object varValue = callStack.peek().findVar(variableValue.varName()).getValue();
+        Object varValue = callStack.peek().findVar(variableValue.varName())
+                .or(() -> globalScope.get(variableValue.varName()))
+                .orElseThrow()
+                .getValue();
+
         lastResult.store(varValue);
     }
 
@@ -610,6 +619,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(StatementBlock statementBlock) {
+        callStack.peek().addScope();
+
         for (int i=0; i<statementBlock.statements().size(); i++) {
             Statement statement = statementBlock.statements().get(i);
             statement.accept(this);
@@ -618,6 +629,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
                 return;
             }
         }
+
+        callStack.peek().removeScope();
     }
 
     private void assertNotNull(Object value) {

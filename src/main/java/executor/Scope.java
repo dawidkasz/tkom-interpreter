@@ -37,8 +37,8 @@ final class Scope {
         var.setValue(value);
     }
 
-    public Variable get(String varName) {
-        return variables.get(varName);
+    public Optional<Variable> get(String varName) {
+        return Optional.ofNullable(variables.get(varName));
     }
 
     public boolean contains(String varName) {

@@ -3,9 +3,6 @@ package executor;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Optional;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.stream.StreamSupport;
 
 final class FunctionCallContext {
     private final String functionName;
@@ -15,17 +12,28 @@ final class FunctionCallContext {
         this.functionName = functionName;
     }
 
-    FunctionCallContext(String functionName, Scope initialScope) {
+    FunctionCallContext(String functionName, Scope argumentScope, Scope globalScope) {
         this.functionName = functionName;
-        this.blockScopes.add(initialScope);
+        this.blockScopes.add(globalScope);
+        this.blockScopes.add(argumentScope);
     }
 
     public String getFunctionName() {
         return functionName;
     }
 
-    public Variable findVar(String varName) {
-        return findVarScope(varName).orElseThrow().get(varName);
+    public void addScope() {
+        blockScopes.push(new Scope());
+    }
+
+    public void removeScope() {
+        blockScopes.pop();
+    }
+
+    public Optional<Variable> findVar(String varName) {
+        Optional<Scope> scope = findVarScope(varName);
+
+        return scope.isPresent() ? scope.get().get(varName) : Optional.empty();
     }
 
     public void declareVar(Variable newVar) {
@@ -51,9 +59,6 @@ final class FunctionCallContext {
 
 
     private Optional<Scope> findVarScope(String varName) {
-        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(
-                        blockScopes.descendingIterator(), Spliterator.ORDERED), false)
-                .filter(scope -> scope.contains(varName))
-                .findFirst();
+        return blockScopes.stream().filter(scope -> scope.contains(varName)).findFirst();
     }
 }
