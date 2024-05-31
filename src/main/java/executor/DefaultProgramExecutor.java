@@ -244,11 +244,6 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     }
 
     @Override
-    public void visit(AndExpression andExpression) {
-
-    }
-
-    @Override
     public void visit(FloatLiteral floatLiteral) {
         lastResult.store(floatLiteral.value());
     }
@@ -261,11 +256,6 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(StringLiteral stringLiteral) {
         lastResult.store(stringLiteral.value());
-    }
-
-    @Override
-    public void visit(LessThan lessThan) {
-
     }
 
     @Override
@@ -326,18 +316,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     }
 
     @Override
-    public void visit(NegationExpression negationExpression) {
-
-    }
-
-    @Override
     public void visit(Null aNull) {
         lastResult.store(Null.getInstance());
-    }
-
-    @Override
-    public void visit(OrExpression orExpression) {
-
     }
 
     @Override
@@ -387,27 +367,149 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     }
 
     @Override
-    public void visit(LessThanOrEqual lessThanOrEqual) {
+    public void visit(LessThan lessThan) {
+        lessThan.left().accept(this);
+        var left = lastResult.fetchAndReset();
 
+        lessThan.right().accept(this);
+        var right = lastResult.fetchAndReset();
+
+        assertNotNull(left);
+        assertNotNull(right);
+
+        if (validateMatchingTypes(left, right, Integer.class)) {
+            lastResult.store(booleanToInteger((Integer) left < (Integer) right));
+        } else if (validateMatchingTypes(left, right, Float.class)) {
+            lastResult.store(booleanToInteger((Float) left < (Float) right));
+        } else {
+            throw new RuntimeException("types do not match");
+        }
     }
 
     @Override
     public void visit(GreaterThan greaterThan) {
+        greaterThan.left().accept(this);
+        var left = lastResult.fetchAndReset();
 
+        greaterThan.right().accept(this);
+        var right = lastResult.fetchAndReset();
+
+        assertNotNull(left);
+        assertNotNull(right);
+
+        if (validateMatchingTypes(left, right, Integer.class)) {
+            lastResult.store(booleanToInteger((Integer) left > (Integer) right));
+        } else if (validateMatchingTypes(left, right, Float.class)) {
+            lastResult.store(booleanToInteger((Float) left > (Float) right));
+        } else {
+            throw new RuntimeException("types do not match");
+        }
+    }
+
+    @Override
+    public void visit(LessThanOrEqual lessThanOrEqual) {
+        lessThanOrEqual.left().accept(this);
+        var left = lastResult.fetchAndReset();
+
+        lessThanOrEqual.right().accept(this);
+        var right = lastResult.fetchAndReset();
+
+        assertNotNull(left);
+        assertNotNull(right);
+
+        if (validateMatchingTypes(left, right, Integer.class)) {
+            lastResult.store(booleanToInteger((Integer) left <= (Integer) right));
+        } else if (validateMatchingTypes(left, right, Float.class)) {
+            lastResult.store(booleanToInteger((Float) left <= (Float) right));
+        } else {
+            throw new RuntimeException("types do not match");
+        }
     }
 
     @Override
     public void visit(GreaterThanOrEqual greaterThanOrEqual) {
+        greaterThanOrEqual.left().accept(this);
+        var left = lastResult.fetchAndReset();
 
+        greaterThanOrEqual.right().accept(this);
+        var right = lastResult.fetchAndReset();
+
+        assertNotNull(left);
+        assertNotNull(right);
+
+        if (validateMatchingTypes(left, right, Integer.class)) {
+            lastResult.store(booleanToInteger((Integer) left >= (Integer) right));
+        } else if (validateMatchingTypes(left, right, Float.class)) {
+            lastResult.store(booleanToInteger((Float) left >= (Float) right));
+        } else {
+            throw new RuntimeException("types do not match");
+        }
+    }
+
+    @Override
+    public void visit(AndExpression andExpression) {
+        andExpression.left().accept(this);
+        var left = lastResult.fetchAndReset();
+
+        if (!isTruthy(left)) {
+            lastResult.store(0);
+            return;
+        }
+
+        andExpression.right().accept(this);
+        var right = lastResult.fetchAndReset();
+
+        lastResult.store(booleanToInteger(isTruthy(right)));
+    }
+
+    @Override
+    public void visit(OrExpression orExpression) {
+        orExpression.left().accept(this);
+        var left = lastResult.fetchAndReset();
+
+        if (isTruthy(left)) {
+            lastResult.store(1);
+            return;
+        }
+
+        orExpression.right().accept(this);
+        var right = lastResult.fetchAndReset();
+
+        lastResult.store(booleanToInteger(isTruthy(right)));
     }
 
     @Override
     public void visit(Equal equal) {
+        equal.left().accept(this);
+        var left = lastResult.fetchAndReset();
 
+        equal.right().accept(this);
+        var right = lastResult.fetchAndReset();
+
+        if (!left.getClass().equals(right.getClass())) {
+            throw new RuntimeException("Types do not match");
+        }
+
+        lastResult.store(booleanToInteger(left.equals(right)));
     }
 
     @Override
     public void visit(NotEqual notEqual) {
+        notEqual.left().accept(this);
+        var left = lastResult.fetchAndReset();
+
+        notEqual.right().accept(this);
+        var right = lastResult.fetchAndReset();
+
+        if (!left.getClass().equals(right.getClass())) {
+            throw new RuntimeException("Types do not match");
+        }
+
+        lastResult.store(booleanToInteger(!left.equals(right)));
+    }
+
+    @Override
+    public void visit(NegationExpression negationExpression) {
 
     }
 
@@ -456,6 +558,30 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         if (value.equals(Null.getInstance())) {
             throw new NullException();
         }
+    }
+
+    private boolean isTruthy(Object value) {
+        if (value instanceof Integer) {
+            return (Integer) value != 0;
+        }
+
+        if (value instanceof Float) {
+            return (Float) value != 0.0;
+        }
+
+        if (value instanceof String) {
+            return !(((String) value).isEmpty());
+        }
+
+        if (value instanceof Null) {
+            return false;
+        }
+
+        throw new RuntimeException("Unrecognized value type");
+    }
+
+    private int booleanToInteger(boolean value) {
+        return value ? 1 : 0;
     }
 
     public static class NullException extends RuntimeException {

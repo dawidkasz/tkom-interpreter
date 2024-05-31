@@ -180,6 +180,55 @@ public class ProgramExecutorTest {
 
     @ParameterizedTest
     @CsvSource({
+            "1 < 2, 1",
+            "2.0 < 1.0, 0",
+            "5.0 > 4.0, 1",
+            "2 > 3, 0",
+            "3 <= 3, 1",
+            "3.0 <= 2.9, 0",
+            "5.0 >= 5.0, 1",
+            "4 >= 5, 0",
+            "1 && 2.0, 1",
+            "\"x\" && 5, 1",
+            "0 && \"\", 0",
+            "2 && \"\", 0",
+            "0.0 && 0.0, 0",
+            "2 && null, 0",
+            "1 || 0, 1",
+            "0.0 || 1, 1",
+            "null || 1, 1",
+            "0 || \"\", 0",
+            "null || null, 0",
+            "1 == 1, 1",
+            "5.0 == 5.0, 1",
+            "\"abc\" == \"abc\", 1",
+            "1 == 2, 0",
+            "5.0 == 6.0, 0",
+            "\"abc\" == \"def\", 0",
+            "1 != 1, 0",
+            "5.0 != 5.0, 0",
+            "\"abc\" != \"abc\", 0",
+            "1 != 2, 1",
+            "5.0 != 6.0, 1",
+            "\"abc\" != \"def\", 1"
+    })
+    void should_execute_relational_expressions(String expression, String expected) {
+        // given
+        String program = String.format("""               
+                void main() {
+                    print((%s) as string);
+                }
+                """, expression);
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
             "8, 3, 2",
             "8.0, 3.0, 2.0",
     })
@@ -246,7 +295,6 @@ public class ProgramExecutorTest {
         // then
         assertThat(capturedOutput).isEqualTo("5\nnull\nxyz\n1");
     }
-
 
     private String executeProgramAndCaptureOutput(String input) {
         Parser parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input)));
