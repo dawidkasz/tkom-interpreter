@@ -9,24 +9,15 @@ import com.sun.jdi.LongType;
 
 final class Variable {
     private final String name;
-    private final Class<?> type;
+    private final Type type;
     private Object value;
 
-    Variable(String name, Class<?> type) {
-        this.name = name;
-        this.type = type;
+    Variable(String name, Type type) {
+        this(name, type, Null.getInstance());
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public Class<?> getType() {
-        return type;
-    }
-
-    Variable(String name, Class<?> type, Object value) {
-        if (!value.getClass().equals(type) && !value.equals(Null.getInstance())) {
+    Variable(String name, Type type, Object value) {
+        if (!value.equals(Null.getInstance()) && !Variable.getProgramType(value.getClass()).equals(type)) {
             throw new IllegalArgumentException(String.format("Value %s is not a valid %s", value, type));
         }
 
@@ -35,9 +26,21 @@ final class Variable {
         this.value = value;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public Type getType() {
+        return type;
+    }
+
     public void setValue(Object value) {
-        if (!value.getClass().equals(type) && !value.equals(Null.getInstance())) {
-            throw new IllegalArgumentException(String.format("Value %s is not a valid %s", value, type));
+        if (
+                !value.equals(Null.getInstance()) &&
+                !Variable.getProgramType(value.getClass()).equals(type)
+        ) {
+            throw new IllegalArgumentException(String.format("Value %s is not a valid %s, %s, %s",
+                    value, type, Variable.getProgramType(value.getClass()), value.getClass()));
         }
 
         this.value = value;
@@ -61,5 +64,21 @@ final class Variable {
         }
 
         throw new RuntimeException();
+    }
+
+    public static Type getProgramType(Class<?> clazz) {
+        if (clazz.equals(Integer.class)) {
+            return new IntType();
+        }
+
+        if (clazz.equals(Float.class)) {
+            return new FloatType();
+        }
+
+        if (clazz.equals(String.class)) {
+            return new StringType();
+        }
+
+        throw new IllegalArgumentException("Unknown type " + clazz);
     }
 }

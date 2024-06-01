@@ -46,7 +46,7 @@ final class FunctionCallContext {
         assert currentScope != null;
 
         if (currentScope.contains(newVar.getName())) {
-            throw new RuntimeException("Variable already defined in current scope: " + newVar);
+            throw new IllegalArgumentException("Variable already defined in current scope: " + newVar);
         }
 
         currentScope.declareVar(newVar);

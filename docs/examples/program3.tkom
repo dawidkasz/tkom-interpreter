@@ -2,7 +2,7 @@ int x = 1;
 int y = null;
 int y = ((2 + null)? + 1)?;
 
-int f1(int a, int a) {
+int f1(int a, int b) {
     return 1;
 }
 
@@ -28,7 +28,10 @@ void main() {
 
     if (1.0 < 2.0) {
         x = 2;
+        string x;
+        x = "a";
     }
+    x = "2";
 
     while (1 > 2) {
     }

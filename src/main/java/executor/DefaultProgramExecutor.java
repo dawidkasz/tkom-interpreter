@@ -66,7 +66,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         var context = callStack.peek();
         Variable arg0 = context.findVar("arg0").orElseThrow();
 
-        if (!arg0.getType().equals(String.class)) {
+        if (!arg0.getType().equals(new StringType())) {
             throw new RuntimeException("Invalid print arg type " + arg0.getClass());
         }
 
@@ -96,7 +96,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
             varDec.value().accept(this);
             globalScope.declareVar(new Variable(
                     varName,
-                    Variable.getInterpreterType(varDec.type()),
+                    varDec.type(),
                     lastResult.fetchAndReset()
             ));
         });
@@ -113,7 +113,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     public void visit(VariableAssignment variableAssignment) {
         FunctionCallContext context = callStack.peek();
 
-        var varType = context.findVar(variableAssignment.varName())
+        Type varType = context.findVar(variableAssignment.varName())
                 .or(() -> globalScope.get(variableAssignment.varName()))
                 .orElseThrow()
                 .getType();
@@ -121,7 +121,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         variableAssignment.expression().accept(this);
         Object newValue = lastResult.fetchAndReset();
 
-        if (newValue.equals(Null.getInstance()) || varType.equals(newValue.getClass())) {
+        if (
+                newValue.equals(Null.getInstance()) ||
+                varType.equals(Variable.getProgramType(newValue.getClass()))
+        ) {
             context.assignVar(variableAssignment.varName(), newValue);
         } else {
             throw new RuntimeException("Invalid variable assignment");
@@ -194,7 +197,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
                 arguments.add(new Variable(
                         paramName,
-                        Variable.getInterpreterType(functionDef.parameters().get(idx).type()),
+                        functionDef.parameters().get(idx).type(),
                         argValue
                 ));
             }
@@ -220,7 +223,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
             for(int idx = 0; idx < functionCall.arguments().size(); idx++) {
                 functionCall.arguments().get(idx).accept(this);
 
-                arguments.add(new Variable("arg" + idx, String.class, lastResult.fetchAndReset()));
+                arguments.add(new Variable("arg" + idx, new StringType(), lastResult.fetchAndReset()));
             }
 
             callStack.push(new FunctionCallContext(
@@ -612,7 +615,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
         context.declareVar(new Variable(
                 variableDeclaration.name(),
-                Variable.getInterpreterType(variableDeclaration.type()),
+                variableDeclaration.type(),
                 value
         ));
     }

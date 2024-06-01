@@ -30,7 +30,10 @@ final class Scope {
         Variable var = Optional.ofNullable(variables.get(varName))
                 .orElseThrow(() -> new IllegalArgumentException("Variable " + varName + " is not defined"));
 
-        if (var.getType() != value.getClass() && !value.equals(Null.getInstance())) {
+        if (
+                !value.equals(Null.getInstance()) &&
+                !var.getType().equals(Variable.getProgramType(value.getClass()))
+        ) {
             throw new IllegalArgumentException("Can't assign variable, because types don't match");
         }
 

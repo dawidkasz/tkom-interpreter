@@ -52,11 +52,19 @@ import java.util.Optional;
 public class SemanticChecker implements AstVisitor {
     private final Map<String, FunctionDefinition> functions = new HashMap<>();
     private final ResultStore<Type> lastType = new ResultStore<>();
-    private Type currentlyProcessedFunctionReturnType = null;
+    private FunctionCallContext currentFunctionContext;
+    private Scope globalScope;
 
     @Override
     public void visit(Program program) {
-        program.globalVariables().forEach((varName, varDec) -> varDec.accept(this));
+        functions.clear();
+        globalScope = new Scope();
+        currentFunctionContext = null;
+
+        program.globalVariables().forEach((varName, varDec) -> {
+            varDec.accept(this);
+            globalScope.declareVar(new Variable(varName, varDec.type()));
+        });
 
         functions.putAll(program.functions());
 
@@ -79,7 +87,16 @@ public class SemanticChecker implements AstVisitor {
 
     @Override
     public void visit(FunctionDefinition functionDefinition) {
-        currentlyProcessedFunctionReturnType = functionDefinition.returnType();
+        var argsScope = new Scope();
+        functionDefinition.parameters().forEach(param ->
+                argsScope.declareVar(new Variable(param.name(), param.type()))
+        );
+
+        currentFunctionContext = new FunctionCallContext(
+                functionDefinition.name(),
+                argsScope,
+                globalScope
+        );
 
         List<ReturnStatement> returnStatements = functionDefinition.statementBlock().statements().stream()
                 .filter(s -> s instanceof ReturnStatement)
@@ -97,11 +114,20 @@ public class SemanticChecker implements AstVisitor {
         }
 
         functionDefinition.statementBlock().accept(this);
+        currentFunctionContext = null;
     }
 
     @Override
     public void visit(VariableAssignment variableAssignment) {
+        String varName = variableAssignment.varName();
 
+        Type varType = currentFunctionContext.findVar(varName)
+                .orElseThrow(() -> new SemanticException(String.format("Variable %s is not defined", varName)))
+                .getType();
+
+        variableAssignment.expression().accept(this);
+
+        assertTypesMatch(varType, lastType.fetchAndReset(), variableAssignment.position());
     }
 
     @Override
@@ -134,13 +160,15 @@ public class SemanticChecker implements AstVisitor {
         returnStatement.expression().accept(this);
         Type returnType = lastType.fetchAndReset();
 
+        Type functionReturnType = functions.get(currentFunctionContext.getFunctionName()).returnType();
+
         if (
-                !returnType.equals(currentlyProcessedFunctionReturnType) &&
+                !returnType.equals(functionReturnType) &&
                 !returnType.equals(new NullAnyType())
         ) {
             throw new SemanticException(String.format(
                     "Expected function to return %s at %s, but received %s instead",
-                    currentlyProcessedFunctionReturnType,
+                    functionReturnType,
                     returnStatement.position(),
                     returnType
             ));
@@ -337,11 +365,24 @@ public class SemanticChecker implements AstVisitor {
         Type valueType = lastType.fetchAndReset();
 
         assertTypesMatch(variableDeclaration.type(), valueType, variableDeclaration.position());
+
+        if (currentFunctionContext != null) {
+            try {
+                currentFunctionContext.declareVar(new Variable(
+                        variableDeclaration.name(),
+                        variableDeclaration.type()
+                ));
+            } catch (IllegalArgumentException e) {
+                throw new SemanticException(String.format("Variable %s is already defined", variableDeclaration.name()));
+            }
+        }
     }
 
     @Override
     public void visit(StatementBlock statementBlock) {
+        currentFunctionContext.addScope();
         statementBlock.statements().forEach(statement -> statement.accept(this));
+        currentFunctionContext.removeScope();
     }
 
     private void assertTypesMatch(Type t1, Type t2, Position position) {
