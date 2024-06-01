@@ -37,6 +37,7 @@ import ast.statement.ReturnStatement;
 import ast.statement.VariableAssignment;
 import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
+import ast.type.CollectionType;
 import ast.type.DictType;
 import ast.type.FloatType;
 import ast.type.IntType;
@@ -46,6 +47,7 @@ import ast.type.Type;
 import ast.type.VoidType;
 import lexer.Position;
 
+import javax.lang.model.type.NullType;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
@@ -170,6 +172,22 @@ public class SemanticChecker implements AstVisitor {
 
     @Override
     public void visit(ForeachStatement foreachStatement) {
+        foreachStatement.iterable().accept(this);
+        Type iterableType = lastType.fetchAndReset();
+
+        if (!(iterableType instanceof DictType iterableTypeDict)) {
+            throw new SemanticException(String.format("Value not iterable at %s", foreachStatement.position()));
+        }
+
+        if (!foreachStatement.varType().equals(iterableTypeDict.keyType())) {
+            throw new TypesMismatchException(iterableTypeDict.keyType(),
+                    foreachStatement.varType(), foreachStatement.position());
+        }
+
+        currentFunctionContext.addScope();
+        currentFunctionContext.declareVar(new Variable(foreachStatement.varName(), foreachStatement.varType()));
+        foreachStatement.statementBlock().accept(this);
+        currentFunctionContext.removeScope();
     }
 
     @Override
@@ -395,13 +413,11 @@ public class SemanticChecker implements AstVisitor {
     @Override
     public void visit(LessThanOrEqual lessThanOrEqual) {
         visitBinaryExpression(lessThanOrEqual.left(), lessThanOrEqual.right());
-
     }
 
     @Override
     public void visit(GreaterThan greaterThan) {
         visitBinaryExpression(greaterThan.left(), greaterThan.right());
-
     }
 
     @Override

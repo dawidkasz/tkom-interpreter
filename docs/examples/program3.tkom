@@ -43,7 +43,12 @@ void main() {
 
     d[1] = null;
 
-    int w = d["a"];
+    int w = d[2];
 
     f1(1, null);
+
+   foreach(int u : d) {
+        string y = u as string;
+        print(d[u] as string);
+    }
 }
