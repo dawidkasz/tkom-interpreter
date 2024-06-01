@@ -491,6 +491,116 @@ public class ProgramExecutorTest {
         assertThat(capturedOutput).isEqualTo(expectedOutput);
     }
 
+    @Test
+    void should_declare_dict_variables() {
+        // given
+        String program = """
+                dict[string, float] a = {"x": 1.0};
+                
+                void main() {
+                    dict[int, string] b = {1: "a", 2: "b"};
+                    dict[int, int] c;
+                
+                    print(a["x"] as string);
+                    print(b[1]);
+                    print({2: 10}[2] as string);
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("1.0\na\n10");
+    }
+
+    @Test
+    void should_handle_dict_assignments() {
+        // given
+        String program = """
+                dict[string, float] a = {};
+                
+                void main() {
+                    dict[int, int] b = {1: 10, 2: 20};
+                
+                    print(b[1] as string);
+                
+                    a[123] = 3.0;
+                    b[1] = 11;
+                
+                    print(a[123] as string);
+                    print(b[1] as string);
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("10\n3.0\n11");
+    }
+
+    @Test
+    void should_pass_dict_arguments_by_reference() {
+        // given
+        String program = """
+                void changeDict1(dict[int, string] d) {
+                    d[1] = "b";
+                }
+                
+                void changeDict2(dict[int, string] x) {
+                    x[1] = "c";
+                }
+                
+                void main() {
+                    dict[int, string] d = {1: "a"};
+                    print(d[1]);
+                
+                    changeDict1(d);
+                    print(d[1]);
+                
+                    changeDict2(d);
+                    print(d[1]);
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("a\nb\nc");
+    }
+
+    @Test
+    void should_pass_simple_arguments_by_value() {
+        // given
+        String program = """
+                void changeInt1(int a) {
+                    a = 2;
+                }
+                
+                void changeInt2(int x) {
+                    x = 3;
+                }
+                
+                void main() {
+                    int a = 1;
+                    print(a as string);
+                
+                    changeInt1(a);
+                    print(a as string);
+                
+                    changeInt2(a);
+                    print(a as string);
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("1\n1\n1");
+    }
 
     private String executeProgramAndCaptureOutput(String input) {
         Parser parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input)));

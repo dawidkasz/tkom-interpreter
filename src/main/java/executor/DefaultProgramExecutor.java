@@ -37,10 +37,11 @@ import ast.statement.Statement;
 import ast.statement.VariableAssignment;
 import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
+import ast.type.DictType;
 import ast.type.FloatType;
 import ast.type.IntType;
+import ast.type.SimpleType;
 import ast.type.StringType;
-import ast.type.Type;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -114,8 +115,18 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void visit(DictAssignment dictAssignment) {
+        Variable dictVar = callStack.peek().findVar(dictAssignment.variableName()).orElseThrow();
 
+        dictAssignment.key().accept(this);
+        Object key = lastResult.fetchAndReset();
+
+        dictAssignment.value().accept(this);
+        Object value = lastResult.fetchAndReset();
+
+        Map<Object, Object> previousVal = (HashMap<Object, Object>) dictVar.getValue();
+        previousVal.put(key, value);
     }
 
     @Override
@@ -266,12 +277,32 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(DictValue dictValue) {
+        dictValue.dict().accept(this);
+        Object dict = lastResult.fetchAndReset();
 
+        dictValue.key().accept(this);
+        Object key = lastResult.fetchAndReset();
+
+        if (dict instanceof HashMap) {
+            lastResult.store(((HashMap<?, ?>) dict).get(key));
+        }
     }
 
     @Override
     public void visit(DictLiteral dictLiteral) {
+        Map<Object, Object> dictContent = new HashMap<>();
 
+        dictLiteral.content().forEach((k, v) -> {
+            k.accept(this);
+            Object key = lastResult.fetchAndReset();
+
+            v.accept(this);
+            Object value = lastResult.fetchAndReset();
+
+            dictContent.put(key, value);
+        });
+
+        lastResult.store(dictContent);
     }
 
     @Override
