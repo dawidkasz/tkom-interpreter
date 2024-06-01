@@ -602,6 +602,29 @@ public class ProgramExecutorTest {
         assertThat(capturedOutput).isEqualTo("1\n1\n1");
     }
 
+    @Test
+    void should_execute_foreach_statement() {
+        // given
+        String program = """
+                void main() {
+                    dict[int, string] d = {5: "a"};
+                    d[1] = "d";
+                    d[3] = "b";
+                    d[2] = "e";
+                
+                    foreach(int i : d) {
+                        print(d[i]);
+                    }
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("a\nd\nb\ne");
+    }
+
     private String executeProgramAndCaptureOutput(String input) {
         Parser parser = new DefaultParser(new DefaultLexer(new StringCharacterProvider(input)));
         Program program = parser.parseProgram();

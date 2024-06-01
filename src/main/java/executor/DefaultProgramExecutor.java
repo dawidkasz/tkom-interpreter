@@ -37,14 +37,13 @@ import ast.statement.Statement;
 import ast.statement.VariableAssignment;
 import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
-import ast.type.DictType;
 import ast.type.FloatType;
 import ast.type.IntType;
-import ast.type.SimpleType;
 import ast.type.StringType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Stack;
 import java.util.List;
@@ -125,7 +124,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         dictAssignment.value().accept(this);
         Object value = lastResult.fetchAndReset();
 
-        Map<Object, Object> previousVal = (HashMap<Object, Object>) dictVar.getValue();
+        Map<Object, Object> previousVal = (LinkedHashMap<Object, Object>) dictVar.getValue();
         previousVal.put(key, value);
     }
 
@@ -143,7 +142,24 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(ForeachStatement foreachStatement) {
+        foreachStatement.iterable().accept(this);
+        var iterable = lastResult.fetchAndReset();
 
+        if (iterable instanceof Map<?,?> iterableDict) {
+            iterableDict.keySet().forEach(key -> {
+
+                callStack.peek().addScope();
+                callStack.peek().declareVar(new Variable(
+                        foreachStatement.varName(),
+                        foreachStatement.varType(),
+                        key
+                ));
+
+                foreachStatement.statementBlock().accept(this);
+
+                callStack.peek().removeScope();
+            });
+        }
     }
 
     @Override
@@ -283,14 +299,14 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         dictValue.key().accept(this);
         Object key = lastResult.fetchAndReset();
 
-        if (dict instanceof HashMap) {
-            lastResult.store(((HashMap<?, ?>) dict).get(key));
+        if (dict instanceof LinkedHashMap<?,?>) {
+            lastResult.store(((LinkedHashMap<?, ?>) dict).get(key));
         }
     }
 
     @Override
     public void visit(DictLiteral dictLiteral) {
-        Map<Object, Object> dictContent = new HashMap<>();
+        Map<Object, Object> dictContent = new LinkedHashMap<>();
 
         dictLiteral.content().forEach((k, v) -> {
             k.accept(this);
