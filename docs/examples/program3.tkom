@@ -25,19 +25,25 @@ string f4() {
 void main() {
     int x = 1;
     int x2 = "1" as int;
+    string y;
+
 
     if (1.0 < 2.0) {
         x = 2;
         string x;
         x = "a";
     }
-    x = "2";
 
     while (1 > 2) {
     }
 
     string z = f2();
 
-    f1(1, 1);
+    dict[int, int] d = {1: null, 2: 2};
 
+    d[1] = null;
+
+    int w = d["a"];
+
+    f1(1, null);
 }

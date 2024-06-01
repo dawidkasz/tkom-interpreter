@@ -37,8 +37,10 @@ import ast.statement.ReturnStatement;
 import ast.statement.VariableAssignment;
 import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
+import ast.type.DictType;
 import ast.type.FloatType;
 import ast.type.IntType;
+import ast.type.SimpleType;
 import ast.type.StringType;
 import ast.type.Type;
 import ast.type.VoidType;
@@ -48,6 +50,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SemanticChecker implements AstVisitor {
     private final Map<String, FunctionDefinition> functions = new HashMap<>();
@@ -132,7 +136,30 @@ public class SemanticChecker implements AstVisitor {
 
     @Override
     public void visit(DictAssignment dictAssignment) {
+        Variable dict = currentFunctionContext.findVar(dictAssignment.variableName())
+                .orElseThrow(() -> new SemanticException(String.format("Variable %s is not defined", dictAssignment.variableName())));
 
+        if (!(dict.getType() instanceof DictType)) {
+            throw new SemanticException(String.format("Expected %s to be of type dict at %s",
+                    dictAssignment.variableName(), dictAssignment.position()));
+        }
+
+        SimpleType dictKeyType = ((DictType) dict.getType()).keyType();
+        SimpleType dictValueType = ((DictType) dict.getType()).valueType();
+
+        dictAssignment.key().accept(this);
+        Type keyType = lastType.fetchAndReset();
+
+        if (!keyType.equals(new NullAnyType()) && !keyType.equals(dictKeyType)) {
+            throw new TypesMismatchException(keyType, dictKeyType, dictAssignment.position());
+        }
+
+        dictAssignment.value().accept(this);
+        Type valueType = lastType.fetchAndReset();
+
+        if (!valueType.equals(new NullAnyType()) && !keyType.equals(dictValueType)) {
+            throw new TypesMismatchException(valueType, dictValueType, dictAssignment.position());
+        }
     }
 
     @Override
@@ -197,7 +224,7 @@ public class SemanticChecker implements AstVisitor {
             Type argType = lastType.fetchAndReset();
             Type paramType = funDef.parameters().get(argIdx).type();
 
-            if (!argType.equals(paramType)) {
+            if (!argType.equals(paramType) && !argType.equals(new NullAnyType())) {
                 throw new TypesMismatchException(argType, paramType);
             }
         }
@@ -218,11 +245,62 @@ public class SemanticChecker implements AstVisitor {
 
     @Override
     public void visit(DictValue dictValue) {
+        dictValue.dict().accept(this);
+        Type dict = lastType.fetchAndReset();
 
+        if (!(dict instanceof DictType)) {
+            throw new SemanticException(String.format("%s is not a valid dict", dictValue));
+        }
+
+        Type dictKeyType = ((DictType) dict).keyType();
+        Type dictValueType = ((DictType) dict).valueType();
+
+        dictValue.key().accept(this);
+        Type keyType = lastType.fetchAndReset();
+
+        if (!keyType.equals(new NullAnyType()) && !dictKeyType.equals(keyType)) {
+            throw new SemanticException(String.format("Expected type %s, but provided %s", dictKeyType, keyType));
+        }
+
+        lastType.store(dictValueType);
     }
 
     @Override
     public void visit(DictLiteral dictLiteral) {
+        Set<Type> keyTypes = dictLiteral.content().keySet().stream()
+                .map(k -> {
+                    k.accept(this);
+                    return lastType.fetchAndReset();
+                })
+                .filter(k -> !k.equals(new NullAnyType()))
+                .collect(Collectors.toSet());
+
+        Set<Type> valueTypes = dictLiteral.content().values().stream()
+                .map(v -> {
+                    v.accept(this);
+                    return lastType.fetchAndReset();
+                })
+                .filter(v -> !v.equals(new NullAnyType()))
+                .collect(Collectors.toSet());
+
+        if (keyTypes.size() > 1 || valueTypes.size() > 1) {
+            throw new SemanticException("Inconsistent types in dict literal");
+        }
+
+
+        if (keyTypes.isEmpty() && valueTypes.isEmpty()) {
+            lastType.store(new DictType(new NullAnyType(), new NullAnyType()));
+            return;
+        }
+
+        Type keyType = keyTypes.isEmpty() ? new NullAnyType() : keyTypes.stream().findAny().orElseThrow();
+        Type valueType = valueTypes.isEmpty() ? new NullAnyType() : keyTypes.stream().findAny().orElseThrow();
+
+        if (!(keyType instanceof SimpleType && valueType instanceof SimpleType)) {
+            throw new SemanticException("Only simple types are allowed in dict");
+        }
+
+        lastType.store(new DictType((SimpleType) keyType, (SimpleType) valueType));
     }
 
     @Override
@@ -275,7 +353,6 @@ public class SemanticChecker implements AstVisitor {
     @Override
     public void visit(MultiplyExpression multiplyExpression) {
         visitBinaryExpression(multiplyExpression.left(), multiplyExpression.right());
-
     }
 
     @Override
@@ -295,7 +372,14 @@ public class SemanticChecker implements AstVisitor {
 
     @Override
     public void visit(VariableValue variableValue) {
+        String varName = variableValue.varName();
 
+        Type varType = currentFunctionContext.findVar(varName)
+                .or(() -> globalScope.get(varName))
+                .orElseThrow(() -> new SemanticException(String.format("Variable %s is not defined", varName)))
+                .getType();
+
+        lastType.store(varType);
     }
 
     @Override
@@ -364,6 +448,19 @@ public class SemanticChecker implements AstVisitor {
         variableDeclaration.value().accept(this);
         Type valueType = lastType.fetchAndReset();
 
+        if (
+                variableDeclaration.type() instanceof DictType varType &&
+                valueType instanceof DictType valType
+        ) {
+            SimpleType kType = valType.keyType().equals(new NullAnyType()) ?
+                    varType.keyType() : valType.keyType();
+
+            SimpleType vType = valType.valueType().equals(new NullAnyType()) ?
+                    varType.keyType() : valType.keyType();
+
+            valueType = new DictType(kType, vType);
+        }
+
         assertTypesMatch(variableDeclaration.type(), valueType, variableDeclaration.position());
 
         if (currentFunctionContext != null) {
@@ -418,6 +515,6 @@ public class SemanticChecker implements AstVisitor {
         }
     }
 
-    private record NullAnyType() implements Type {
+    private record NullAnyType() implements SimpleType {
     }
 }

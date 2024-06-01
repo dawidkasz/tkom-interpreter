@@ -66,10 +66,6 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         var context = callStack.peek();
         Variable arg0 = context.findVar("arg0").orElseThrow();
 
-        if (!arg0.getType().equals(new StringType())) {
-            throw new RuntimeException("Invalid print arg type " + arg0.getClass());
-        }
-
         System.out.println((String) arg0.getValue());
 
         callStack.pop();
@@ -113,22 +109,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     public void visit(VariableAssignment variableAssignment) {
         FunctionCallContext context = callStack.peek();
 
-        Type varType = context.findVar(variableAssignment.varName())
-                .or(() -> globalScope.get(variableAssignment.varName()))
-                .orElseThrow()
-                .getType();
-
         variableAssignment.expression().accept(this);
-        Object newValue = lastResult.fetchAndReset();
-
-        if (
-                newValue.equals(Null.getInstance()) ||
-                varType.equals(Variable.getProgramType(newValue.getClass()))
-        ) {
-            context.assignVar(variableAssignment.varName(), newValue);
-        } else {
-            throw new RuntimeException("Invalid variable assignment");
-        }
+        context.assignVar(variableAssignment.varName(),  lastResult.fetchAndReset());
     }
 
     @Override
@@ -175,30 +157,15 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     public void visit(FunctionCall functionCall) {
         FunctionDefinition functionDef = functions.get(functionCall.functionName());
         if (functionDef != null) {
-            if (functionCall.arguments().size() != functionDef.parameters().size()) {
-                throw new RuntimeException("Invalid number of arguments in function call");
-            }
-
             List<Variable> arguments = new ArrayList<>();
 
             for(int idx = 0; idx < functionCall.arguments().size(); idx++) {
                 functionCall.arguments().get(idx).accept(this);
-                var argValue = lastResult.fetchAndReset();
-
-                String paramName = functionDef.parameters().get(idx).name();
-                Type paramType = functionDef.parameters().get(idx).type();
-
-                if (
-                        !Variable.getInterpreterType(paramType).equals(argValue.getClass()) &&
-                        !argValue.equals(Null.getInstance())
-                ) {
-                    throw new RuntimeException(String.format("Types mismatch between param %s and argument", paramName));
-                }
 
                 arguments.add(new Variable(
-                        paramName,
+                        functionDef.parameters().get(idx).name(),
                         functionDef.parameters().get(idx).type(),
-                        argValue
+                        lastResult.fetchAndReset()
                 ));
             }
 
@@ -554,10 +521,6 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         equal.right().accept(this);
         var right = lastResult.fetchAndReset();
 
-        if (!left.getClass().equals(right.getClass())) {
-            throw new RuntimeException("Types do not match");
-        }
-
         lastResult.store(booleanToInteger(left.equals(right)));
     }
 
@@ -568,10 +531,6 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
         notEqual.right().accept(this);
         var right = lastResult.fetchAndReset();
-
-        if (!left.getClass().equals(right.getClass())) {
-            throw new RuntimeException("Types do not match");
-        }
 
         lastResult.store(booleanToInteger(!left.equals(right)));
     }
@@ -604,14 +563,6 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
         variableDeclaration.value().accept(this);
         Object value = lastResult.fetchAndReset();
-
-        if (
-                !value.equals(Null.getInstance()) && (value.getClass().equals(Integer.class) && !variableDeclaration.type().equals(new IntType()) ||
-                value.getClass().equals(String.class) && !variableDeclaration.type().equals(new StringType()) ||
-                value.getClass().equals(Float.class) && !variableDeclaration.type().equals(new FloatType()))
-        ) {
-            throw new RuntimeException("Types do not match");
-        }
 
         context.declareVar(new Variable(
                 variableDeclaration.name(),
