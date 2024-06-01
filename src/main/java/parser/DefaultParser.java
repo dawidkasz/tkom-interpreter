@@ -77,7 +77,7 @@ public class DefaultParser implements Parser {
     }
 
     // functionDefinition = functionReturnType identifier parameterList statementBlock |
-    //                      type identifier ["=" expression] ";";;
+    //                      type identifier ["=" expression] ";";
     private Optional<Declaration> parseFunctionDefinitionOrGlobalVariableDeclaration() {
         if (!token.type().isFunctionReturnType()) {
             return Optional.empty();
@@ -640,6 +640,7 @@ public class DefaultParser implements Parser {
         consumeToken();
 
         if (token.type() == TokenType.RIGHT_CURLY_BRACKET) {
+            consumeToken();
             return Optional.of(DictLiteral.empty());
         }
 
