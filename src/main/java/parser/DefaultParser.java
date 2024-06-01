@@ -73,6 +73,10 @@ public class DefaultParser implements Parser {
             declaration = this.parseFunctionDefinitionOrGlobalVariableDeclaration();
         }
 
+        if (!token.equals(Token.eof())) {
+            throw new SyntaxError("Function definition can not be parsed", token.position());
+        }
+
         return new Program(functions, globalVariables);
     }
 

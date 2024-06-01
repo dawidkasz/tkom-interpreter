@@ -37,7 +37,6 @@ import ast.statement.ReturnStatement;
 import ast.statement.VariableAssignment;
 import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
-import ast.type.CollectionType;
 import ast.type.DictType;
 import ast.type.FloatType;
 import ast.type.IntType;
@@ -47,7 +46,6 @@ import ast.type.Type;
 import ast.type.VoidType;
 import lexer.Position;
 
-import javax.lang.model.type.NullType;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;

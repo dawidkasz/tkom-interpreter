@@ -1,5 +1,4 @@
-int x = 1;
-int y = null;
+int y232;
 int y = ((2 + null)? + 1)?;
 
 int f1(int a, int b) {
@@ -20,6 +19,10 @@ string f4() {
     }
 
     return "";
+}
+
+void f5() {
+    return null;
 }
 
 void main() {
