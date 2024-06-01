@@ -111,11 +111,11 @@ public class Interpreter {
         try (var characterProvider = new FileCharacterProvider(inputFilePath)) {
             var programParser = new parser.DefaultParser(new DefaultLexer(characterProvider));
             program = programParser.parseProgram();
-        } catch (DefaultParser.SyntaxError e) {
+        } catch (DefaultParser.SyntaxError | DefaultLexer.LexerException e) {
             System.err.println("Syntax error: " + e.getMessage());
             System.exit(1);
         } catch (FileNotFoundException e) {
-            System.out.println("File not found: " + inputFilePath);
+            System.err.println("File not found: " + inputFilePath);
             System.exit(1);
         } catch (IOException e) {
             throw new RuntimeException(e);
