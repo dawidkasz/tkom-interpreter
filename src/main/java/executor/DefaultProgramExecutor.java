@@ -49,6 +49,7 @@ import java.util.Stack;
 import java.util.List;
 
 public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
+    private final SemanticChecker semanticChecker;
     private final Stack<FunctionCallContext> callStack = new Stack<>();
     private final Map<String, FunctionDefinition> functions = new HashMap<>();
     private final Map<String, Runnable> builtinFunctions;
@@ -56,23 +57,16 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     private Scope globalScope;
     private boolean shouldReturnFromCurrentFunctionCall = false;
 
-    public DefaultProgramExecutor() {
+    public DefaultProgramExecutor(SemanticChecker semanticChecker) {
+        this.semanticChecker = semanticChecker;
         builtinFunctions = Map.of(
                 "print", this::executeBuiltinPrint
         );
     }
 
-    private void executeBuiltinPrint() {
-        var context = callStack.peek();
-        Variable arg0 = context.findVar("arg0").orElseThrow();
-
-        System.out.println((String) arg0.getValue());
-
-        callStack.pop();
-    }
-
     @Override
     public void execute(Program program) {
+        semanticChecker.verify(program);
         resetState();
         visit(program);
     }
@@ -124,8 +118,14 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         dictAssignment.value().accept(this);
         Object value = lastResult.fetchAndReset();
 
-        Map<Object, Object> previousVal = (LinkedHashMap<Object, Object>) dictVar.getValue();
-        previousVal.put(key, value);
+        if (dictVar.getValue() instanceof Map) {
+            Map<Object, Object> previousVal = (LinkedHashMap<Object, Object>) dictVar.getValue();
+            previousVal.put(key, value);
+        } else if (dictVar.getValue() instanceof Null) {
+            Map<Object, Object> newValue = new LinkedHashMap<>();
+            newValue.put(key, value);
+            dictVar.setValue(newValue);
+        }
     }
 
     @Override
@@ -300,7 +300,13 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         Object key = lastResult.fetchAndReset();
 
         if (dict instanceof LinkedHashMap<?,?>) {
-            lastResult.store(((LinkedHashMap<?, ?>) dict).get(key));
+            var value = ((LinkedHashMap<?, ?>) dict).get(key);
+
+            if (value == null) {
+                throw new AppNullPointerException(String.format("Key '%s' doesn't exist", key.toString()));
+            }
+
+            lastResult.store(value);
         }
     }
 
@@ -384,6 +390,9 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         multiplyExpression.right().accept(this);
         var right = lastResult.fetchAndReset();
 
+        assertNotNull(left);
+        assertNotNull(right);
+
         if (validateMatchingTypes(left, right, Integer.class)) {
             lastResult.store((Integer) left * (Integer) right);
         } else if (validateMatchingTypes(left, right, Float.class)) {
@@ -441,7 +450,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         try {
             nullableExpression.expression().accept(this);
             value = lastResult.fetchAndReset();
-        } catch (NullException e) {
+        } catch (AppNullPointerException e) {
             value = Null.getInstance();
         }
 
@@ -595,6 +604,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         unaryMinusExpression.expression().accept(this);
         var value = lastResult.fetchAndReset();
 
+        assertNotNull(value);
+
         if (value.getClass().equals(Integer.class)) {
             lastResult.store(-((Integer) value));
         } else if (value.getClass().equals(Float.class)) {
@@ -634,9 +645,18 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         callStack.peek().removeScope();
     }
 
+    private void executeBuiltinPrint() {
+        var context = callStack.peek();
+        Variable arg0 = context.findVar("arg0").orElseThrow();
+
+        System.out.println((String) arg0.getValue());
+
+        callStack.pop();
+    }
+
     private void assertNotNull(Object value) {
         if (value.equals(Null.getInstance())) {
-            throw new NullException();
+            throw new AppNullPointerException("Unexpected null");
         }
     }
 
@@ -664,6 +684,15 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         return value ? 1 : 0;
     }
 
-    public static class NullException extends RuntimeException {
+    public static class AppRuntimeException extends RuntimeException {
+        public AppRuntimeException(String message) {
+            super(message);
+        }
+    }
+
+    public static class AppNullPointerException extends AppRuntimeException {
+        AppNullPointerException(String message) {
+            super(message);
+        }
     }
 }

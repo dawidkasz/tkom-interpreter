@@ -15,9 +15,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 public class ProgramExecutorTest {
-    private final ProgramExecutor programExecutor = new DefaultProgramExecutor();
+    private final ProgramExecutor programExecutor = new DefaultProgramExecutor(new DefaultSemanticChecker());
     private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
     private final PrintStream originalOut = System.out;
 
@@ -235,6 +236,8 @@ public class ProgramExecutorTest {
             "\"x\", 0",
             "1 < 2, 0",
             "2.0 <= 1.0, 1",
+            "null, 1",
+            "!null, 0",
     })
     void should_execute_negation_expression(String expression, String expected) {
         // given
@@ -436,7 +439,9 @@ public class ProgramExecutorTest {
                 }
 
                 void main() {
-                    print(fib(2) as string);
+                    string fib2 = fib(2) as string;
+                
+                    print(fib2);
                     print(fib(10) as string);
                 }
                 """;
@@ -518,17 +523,17 @@ public class ProgramExecutorTest {
     void should_handle_dict_assignments() {
         // given
         String program = """
-                dict[string, float] a = {};
+                dict[string, float] a;
                 
                 void main() {
                     dict[int, int] b = {1: 10, 2: 20};
                 
                     print(b[1] as string);
                 
-                    a[123] = 3.0;
+                    a["123"] = 3.0;
                     b[1] = 11;
                 
-                    print(a[123] as string);
+                    print(a["123"] as string);
                     print(b[1] as string);
                 }
                 """;
@@ -538,6 +543,43 @@ public class ProgramExecutorTest {
 
         // then
         assertThat(capturedOutput).isEqualTo("10\n3.0\n11");
+    }
+
+    @Test
+    void should_throw_null_pointer_exception_when_dict_key_is_not_present() {
+        // given
+        String program = """                
+                void main() {
+                    dict[int, int] x = {1: 2};
+                    int a = x[1];
+                    int b = x[234];
+                }
+                """;
+
+        // then
+        assertThatExceptionOfType(DefaultProgramExecutor.AppNullPointerException.class)
+                .isThrownBy(() -> executeProgramAndCaptureOutput(program))
+                .withMessageStartingWith("Key '234' doesn't exist");
+    }
+
+    @Test
+    void should_not_throw_null_pointer_exception_when_dict_key_is_not_present_but_exception_is_handled() {
+        // given
+        String program = """                
+                void main() {
+                    dict[int, int] x = {1: 2};
+                    int a = x[1];
+                    int b = x[234]?;
+                
+                    print(b as string);
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("null");
     }
 
     @Test
@@ -623,6 +665,43 @@ public class ProgramExecutorTest {
 
         // then
         assertThat(capturedOutput).isEqualTo("a\nd\nb\ne");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "null + null",
+            "2 + null",
+            "null + 2.0",
+            "\"x\" + null",
+            "-null",
+            "null * 6",
+            "null * 6.0",
+            "null / 5.5",
+            "null / 4",
+            "4 % null",
+            "null * null",
+            "null % 3.5",
+            "1 + f()",
+            "null < 5",
+            "8 <= null",
+            "f() > 2",
+            "null >= 3.3",
+    })
+    void should_throw_null_pointer_exception_when_null_is_in_binary_operation(String operation) {
+        // given
+        String program = String.format("""
+                int f() {
+                    return null;
+                }
+                
+                void main() {
+                    string result = (%s) as string;
+                }
+                """, operation);
+
+        // then
+        assertThatExceptionOfType(DefaultProgramExecutor.AppNullPointerException.class)
+                .isThrownBy(() -> executeProgramAndCaptureOutput(program));
     }
 
     private String executeProgramAndCaptureOutput(String input) {

@@ -2,7 +2,7 @@ import ast.AstPrinter;
 import ast.Program;
 import executor.DefaultProgramExecutor;
 import executor.ProgramExecutor;
-import executor.SemanticChecker;
+import executor.DefaultSemanticChecker;
 import lexer.DefaultLexer;
 import lexer.characterprovider.FileCharacterProvider;
 import org.apache.commons.cli.CommandLineParser;
@@ -18,16 +18,13 @@ import java.io.IOException;
 
 public class Interpreter {
     private final ProgramExecutor executor;
-    private final SemanticChecker semanticChecker;
 
-
-    public Interpreter(ProgramExecutor executor, SemanticChecker semanticChecker) {
+    public Interpreter(ProgramExecutor executor) {
         this.executor = executor;
-        this.semanticChecker = semanticChecker;
     }
 
     public static void main(String[] args) {
-        Interpreter interpreter = new Interpreter(new DefaultProgramExecutor(), new SemanticChecker());
+        Interpreter interpreter = new Interpreter(new DefaultProgramExecutor(new DefaultSemanticChecker()));
         interpreter.run(args);
     }
 
@@ -68,16 +65,12 @@ public class Interpreter {
         }
 
         try {
-            semanticChecker.visit(program);
-        } catch (SemanticChecker.SemanticException e) {
+            executor.execute(program);
+        } catch (DefaultSemanticChecker.SemanticException e) {
             System.err.printf("Compilation error: %s%n", e.getMessage());
             System.exit(1);
-        }
-
-        try {
-            executor.execute(program);
-        } catch (RuntimeException e) {
-            System.err.printf("Runtime error: %s%n", e.getMessage());
+        } catch (DefaultProgramExecutor.AppRuntimeException e) {
+            System.err.printf("%s: %s%n", e.getClass(), e.getMessage());
             System.exit(1);
         }
     }
