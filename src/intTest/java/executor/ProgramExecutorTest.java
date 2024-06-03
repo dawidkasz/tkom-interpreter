@@ -437,10 +437,15 @@ public class ProgramExecutorTest {
 
                     return a + b;
                 }
+                
+                void f2(){
+                    print("b");
+                }
 
                 void main() {
                     int a = addOrZero(1, 0);
                     print(a as string);
+                    f2();
                 }
                 """;
 
@@ -448,7 +453,7 @@ public class ProgramExecutorTest {
         String capturedOutput = executeProgramAndCaptureOutput(program);
 
         // then
-        assertThat(capturedOutput).isEqualTo("0");
+        assertThat(capturedOutput).isEqualTo("0\nb");
     }
 
     @Test
@@ -476,6 +481,37 @@ public class ProgramExecutorTest {
 
         // then
         assertThat(capturedOutput).isEqualTo("1\n55");
+    }
+
+    @Test
+    void should_not_execute_any_statements_after_return() {
+        // given
+        String program = """
+                void f() {
+                    if (1) {
+                        print("a");
+                        return null;
+                    }
+                
+                    print("b");
+                    return null;
+                }
+                
+                void main() {
+                    f();
+                    if (1) {
+                        print("c");
+                        return null;
+                    }
+                    print("d");
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("a\nc");
     }
 
     @Test
@@ -727,6 +763,43 @@ public class ProgramExecutorTest {
         // then
         assertThatExceptionOfType(DefaultProgramExecutor.AppNullPointerException.class)
                 .isThrownBy(() -> executeProgramAndCaptureOutput(program));
+    }
+
+    @Test
+    void should_throw_an_error_when_dividing_by_zero() {
+        // given
+        String program = """
+                void main() {
+                    int x = 1 / 0;
+                }
+                """;
+
+        // then
+        assertThatExceptionOfType(DefaultProgramExecutor.AppZeroDivisionError.class)
+                .isThrownBy(() -> executeProgramAndCaptureOutput(program));
+    }
+
+    @Test
+    void should_only_execute_necessary_expressions_in_or_statement() {
+        // given
+        String program = """
+                int f(int x) {
+                    print(x as string);
+                    return x;
+                }
+                
+                void main() {
+                    if(f(0) || f(0) || f(0) || f(1) || f(1) || f(1)) {
+                        print("x");
+                    }
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("0\n0\n0\n1\nx");
     }
 
     private String executeProgramAndCaptureOutput(String input) {

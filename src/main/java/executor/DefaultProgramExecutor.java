@@ -246,12 +246,16 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         assertNotNull(left);
         assertNotNull(right);
 
-        if (validateMatchingTypes(left, right, Integer.class)) {
-            lastResult.store((Integer) left / (Integer) right);
-        } else if (validateMatchingTypes(left, right, Float.class)) {
-            lastResult.store((Float) left / (Float) right);
-        } else {
-            throw new RuntimeException("types do not match");
+        try {
+            if (validateMatchingTypes(left, right, Integer.class)) {
+                lastResult.store((Integer) left / (Integer) right);
+            } else if (validateMatchingTypes(left, right, Float.class)) {
+                lastResult.store((Float) left / (Float) right);
+            } else {
+                throw new RuntimeException("types do not match");
+            }
+        } catch (ArithmeticException e) {
+            throw new AppZeroDivisionError();
         }
     }
 
@@ -699,6 +703,12 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     public static class AppNullPointerException extends AppRuntimeException {
         AppNullPointerException(String message) {
             super(message);
+        }
+    }
+
+    public static class AppZeroDivisionError extends AppRuntimeException {
+        AppZeroDivisionError() {
+            super("Can't divide by zero");
         }
     }
 }
