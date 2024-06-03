@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Stack;
 import java.util.List;
 
@@ -60,7 +61,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     public DefaultProgramExecutor(SemanticChecker semanticChecker) {
         this.semanticChecker = semanticChecker;
         builtinFunctions = Map.of(
-                "print", this::executeBuiltinPrint
+                "print", this::executeBuiltinPrint,
+                "input", this::executeBuiltinInput
         );
     }
 
@@ -226,6 +228,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
                     globalScope
             ));
             builtinFunctionDef.run();
+            callStack.pop();
             return;
         }
 
@@ -650,8 +653,11 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         Variable arg0 = context.findVar("arg0").orElseThrow();
 
         System.out.println((String) arg0.getValue());
+    }
 
-        callStack.pop();
+    private void executeBuiltinInput() {
+        var scanner = new Scanner(System.in);
+        lastResult.store(scanner.nextLine());
     }
 
     private void assertNotNull(Object value) {

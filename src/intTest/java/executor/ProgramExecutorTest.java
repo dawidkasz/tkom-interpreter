@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import parser.DefaultParser;
 import parser.Parser;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
@@ -46,6 +47,30 @@ public class ProgramExecutorTest {
 
         // then
         assertThat(capturedOutput).isEqualTo("xyz");
+    }
+
+    @Test
+    void should_execute_builtin_input() {
+        // given
+        String program = """
+                void main() {
+                    string val = input();
+                    print("Read value: " + val);
+                }
+                """;
+        String input = "hello world";
+        String capturedOutput;
+
+        // when
+        try {
+            System.setIn(new ByteArrayInputStream(input.getBytes()));
+            capturedOutput = executeProgramAndCaptureOutput(program);
+        } finally {
+            System.setIn(System.in);
+        }
+
+        // then
+        assertThat(capturedOutput).isEqualTo("Read value: hello world");
     }
 
     @ParameterizedTest

@@ -231,6 +231,10 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         if (functionCall.functionName().equals("print")) {
             return;
         }
+        if (functionCall.functionName().equals("input")) {
+            lastType.store(new StringType());
+            return;
+        }
 
         FunctionDefinition funDef = Optional.ofNullable(functions.get(functionCall.functionName()))
                 .orElseThrow(() -> new SemanticException(String.format("Function %s is not defined", functionCall.functionName())));
