@@ -116,13 +116,16 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
                 .toList();
 
         if (returnStatements.isEmpty() && !functionDefinition.returnType().equals(new VoidType())) {
-            throw new SemanticException(String.format("Missing return statement in function %s at %s",
-                    functionDefinition.name(), functionDefinition.position()));
+            throw new SemanticException(String.format(
+                    "Missing return statement in function %s at line %s, column %s",
+                    functionDefinition.name(), functionDefinition.position().lineNumber(),
+                    functionDefinition.position().columnNumber()));
         }
 
         if (returnStatements.size() > 1) {
-            throw new SemanticException(String.format("Unreachable return statement in function %s at %s",
-                    functionDefinition.name(), returnStatements.get(1).position()));
+            throw new SemanticException(String.format("Unreachable return statement in function %s at line %s, column %s",
+                    functionDefinition.name(), returnStatements.get(1).position().lineNumber(),
+                    returnStatements.get(1).position().columnNumber()));
         }
 
         functionDefinition.statementBlock().accept(this);
@@ -134,7 +137,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         String varName = variableAssignment.varName();
 
         Type varType = currentFunctionContext.findVar(varName)
-                .orElseThrow(() -> new SemanticException(String.format("Variable %s is not defined", varName)))
+                .orElseThrow(() -> SemanticException.undefinedVariable(varName))
                 .getType();
 
         variableAssignment.expression().accept(this);
@@ -145,7 +148,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
     @Override
     public void visit(DictAssignment dictAssignment) {
         Variable dict = currentFunctionContext.findVar(dictAssignment.variableName())
-                .orElseThrow(() -> new SemanticException(String.format("Variable %s is not defined", dictAssignment.variableName())));
+                .orElseThrow(() -> SemanticException.undefinedVariable(dictAssignment.variableName()));
 
         if (!(dict.getType() instanceof DictType)) {
             throw new SemanticException(String.format("Expected %s to be of type dict at %s",
@@ -182,7 +185,8 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         Type iterableType = lastType.fetchAndReset();
 
         if (!(iterableType instanceof DictType iterableTypeDict)) {
-            throw new SemanticException(String.format("Value not iterable at %s", foreachStatement.position()));
+            throw new SemanticException(String.format("Value is not iterable at line %s, column %s",
+                    foreachStatement.position().lineNumber(), foreachStatement.position().columnNumber()));
         }
 
         if (!foreachStatement.varType().equals(iterableTypeDict.keyType())) {
@@ -218,9 +222,11 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
                 !returnType.equals(new NullAnyType())
         ) {
             throw new SemanticException(String.format(
-                    "Expected function to return %s at %s, but received %s instead",
+                    "Expected function %s to return %s at line %s, column %s, but received %s instead",
+                    currentFunctionContext.getFunctionName(),
                     functionReturnType,
-                    returnStatement.position(),
+                    returnStatement.position().lineNumber(),
+                    returnStatement.position().columnNumber(),
                     returnType
             ));
         }
@@ -237,14 +243,20 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         }
 
         FunctionDefinition funDef = Optional.ofNullable(functions.get(functionCall.functionName()))
-                .orElseThrow(() -> new SemanticException(String.format("Function %s is not defined", functionCall.functionName())));
+                .orElseThrow(() -> new SemanticException(String.format(
+                        "Function %s is not defined at line %s, column %s",
+                        functionCall.functionName(),
+                        functionCall.position().lineNumber(),
+                        functionCall.position().columnNumber()
+                )));
 
         int numParams = funDef.parameters().size();
         int numArgs = functionCall.arguments().size();
 
         if (numArgs != numParams) {
-            throw new SemanticException(String.format(
-                    "Expected %s arguments, but provided %s at %s", numParams, numArgs, functionCall.position()));
+            throw new SemanticException(String.format("Function %s expected %s arguments, but provided %s at line %s, column %s",
+                    functionCall.functionName(), numParams, numArgs,
+                    functionCall.position().lineNumber(), functionCall.position().columnNumber()));
         }
 
         for (int argIdx=0; argIdx<numArgs; ++argIdx) {
@@ -253,7 +265,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
             Type paramType = funDef.parameters().get(argIdx).type();
 
             if (!argType.equals(paramType) && !argType.equals(new NullAnyType())) {
-                throw new TypesMismatchException(argType, paramType);
+                throw new TypesMismatchException(argType, paramType, functionCall.position());
             }
         }
 
@@ -404,7 +416,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
 
         Type varType = currentFunctionContext.findVar(varName)
                 .or(() -> globalScope.get(varName))
-                .orElseThrow(() -> new SemanticException(String.format("Variable %s is not defined", varName)))
+                .orElseThrow(() -> SemanticException.undefinedVariable(varName))
                 .getType();
 
         lastType.store(varType);
@@ -529,11 +541,16 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         public SemanticException(String message) {
             super(message);
         }
+
+        public static SemanticException undefinedVariable(String varName) {
+            return new SemanticException(String.format("Variable %s is not defined", varName));
+        }
     }
 
     public static class TypesMismatchException extends SemanticException {
         public TypesMismatchException(Type t1, Type t2, Position position) {
-            super(String.format("Types %s and %s do not match at %s", t1, t2, position));
+            super(String.format("Types %s and %s do not match at line %s, column %s",
+                    t1, t2, position.lineNumber(), position.columnNumber()));
         }
 
         public TypesMismatchException(Type t1, Type t2) {
