@@ -554,7 +554,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
 
     private void assertIsValidConditionType(Type type, Position position) {
         if (type instanceof CollectionType) {
-            throw new SemanticException(String.format("Invalid condition in while statement at line %s, column %s",
+            throw new SemanticException(String.format("Invalid condition in statement at line %s, column %s",
                     position.lineNumber(), position.columnNumber()));
         }
     }
