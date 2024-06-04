@@ -290,7 +290,7 @@ public class SemanticCheckerTest {
         // then
         assertThatExceptionOfType(DefaultSemanticChecker.SemanticException.class)
                 .isThrownBy(() -> runSemanticCheck(program))
-                .withMessage("Invalid condition in while statement at line 2, column 5");
+                .withMessage("Invalid condition in statement at line 2, column 5");
     }
 
     @Test

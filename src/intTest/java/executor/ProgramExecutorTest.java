@@ -810,6 +810,8 @@ public class ProgramExecutorTest {
             "int x = \"abc\" as int",
             "int x = \"5.0\" as int",
             "float x = \"abc\" as float",
+            "int x = null as int",
+            "float x = null as float"
     })
     void should_throw_cast_error_when_cast_is_impossible(String expression) {
         // given

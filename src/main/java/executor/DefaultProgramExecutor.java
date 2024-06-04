@@ -271,40 +271,76 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         var outType = castedExpression.asType();
 
         try {
+            Optional<Object> castResult = Optional.empty();
             if (clazz.equals(Integer.class)) {
-                if (outType.equals(new IntType())) {
-                    lastResult.store(value);
-                } else if (outType.equals(new FloatType())) {
-                    lastResult.store(Float.valueOf((Integer) value));
-                } else if (outType.equals(new StringType())) {
-                    lastResult.store(String.valueOf(value));
-                }
+                castResult = tryCastInt((Integer) value, outType);
             } else if (clazz.equals(Float.class)) {
-                if (outType.equals(new IntType())) {
-                    lastResult.store(((Float) value).intValue());
-                } else if (outType.equals(new FloatType())) {
-                    lastResult.store(value);
-                } else if (outType.equals(new StringType())) {
-                    lastResult.store(String.valueOf(value));
-                }
+                castResult = tryCastFloat((Float) value, outType);
             } else if (clazz.equals(String.class)) {
-                if (outType.equals(new IntType())) {
-                    lastResult.store(Integer.valueOf((String) value));
-                } else if (outType.equals(new FloatType())) {
-                    lastResult.store(Float.valueOf((String) value));
-                } else if (outType.equals(new StringType())) {
-                    lastResult.store(value);
-                }
+                castResult = tryCastString((String) value, outType);
             } else if (clazz.equals(Null.class)) {
-                if (outType.equals(new StringType())) {
-                    lastResult.store(value.toString());
-                }
-            } else {
-                throw new AppCastError(outType);
+                castResult = tryCastNull(outType);
             }
+
+            lastResult.store(castResult.orElseThrow(() -> new AppCastError(outType)));
         } catch (NumberFormatException e) {
             throw new AppCastError(outType);
         }
+    }
+
+    private Optional<Object> tryCastInt(Integer value, Type outType) {
+        if (outType.equals(new IntType())) {
+            return Optional.of(value);
+        }
+        if (outType.equals(new FloatType())) {
+            return Optional.of(Float.valueOf(value));
+        }
+
+        if (outType.equals(new StringType())) {
+            return Optional.of(String.valueOf(value));
+        }
+
+        return Optional.empty();
+    }
+
+    private Optional<Object> tryCastFloat(Float value, Type outType) {
+        if (outType.equals(new IntType())) {
+            return Optional.of(value.intValue());
+        }
+
+        if (outType.equals(new FloatType())) {
+            return Optional.of(value);
+        }
+
+        if (outType.equals(new StringType())) {
+            return Optional.of(String.valueOf(value));
+        }
+
+        return Optional.empty();
+    }
+
+    private Optional<Object> tryCastString(String value, Type outType) {
+        if (outType.equals(new IntType())) {
+            return Optional.of(Integer.valueOf(value));
+        }
+
+        if (outType.equals(new FloatType())) {
+            return Optional.of(Float.valueOf(value));
+        }
+
+        if (outType.equals(new StringType())) {
+            return Optional.of(value);
+        }
+
+        return Optional.empty();
+    }
+
+    private Optional<Object> tryCastNull(Type outType) {
+        if (outType.equals(new StringType())) {
+            return Optional.of(Null.getInstance().toString());
+        }
+
+        return Optional.empty();
     }
 
     @Override
