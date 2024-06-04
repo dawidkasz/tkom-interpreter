@@ -9,7 +9,6 @@ int readNumber() {
     return n;
 }
 
-
 void main() {
     int a = readNumber();
     if (a == null) {

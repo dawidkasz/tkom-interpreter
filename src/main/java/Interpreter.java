@@ -70,7 +70,7 @@ public class Interpreter {
             System.err.printf("Compilation error: %s%n", e.getMessage());
             System.exit(1);
         } catch (DefaultProgramExecutor.AppRuntimeException e) {
-            System.err.printf("%s: %s%n", e.getClass(), e.getMessage());
+            System.err.printf("%s: %s%n", e.getClass().getSimpleName(), e.getMessage());
             System.exit(1);
         }
     }

@@ -533,7 +533,7 @@ public class LexerTest {
     void should_ignore_comments() {
         // given
         String text = """
-            void add(int a, int b) { # some comment 
+            void add(int a, int b) { # some comment
             # return abc
             # return def
                 return a + b;#comment

@@ -1,21 +1,16 @@
-int fib(int n) {
-    if (n == 1) {
-        return 1;
-    }
-
-    if (n == 2) {
-        return 1;
-    }
-
-    return fib(n-1) + fib(n-2);
+void modifyDict(dict[string, int] mp, string key, int val) {
+    mp[key] = val;
 }
 
 void main() {
-    int x = 1;
+    dict[string, int] mp = {"a": 1, "b": 2, "c": 3};
 
-    while (x <= 10) {
-        int fibVal = fib(x);
-        print("Fib(" + x as string + ") = " + fibVal as string);
-        x = x + 1;
+    modifyDict(mp, "a", 3);
+    modifyDict(mp, "d", 4);
+
+    int x = mp["a"]; # 3
+
+    foreach (string key : mp) {
+        print(mp[key] as string); # 3 2 3 4
     }
 }

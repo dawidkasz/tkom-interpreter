@@ -1,57 +1,18 @@
-int y232;
-int y = ((2 + null)? + 1)?;
-
-int f1(int a, int b) {
-    return 1;
-}
-
-string f2() {
-    return "a";
-}
-
-int f3() {
-    return 1;
-}
-
-string f4() {
-    if (1) {
-        return null;
-    }
-
-    return "";
-}
-
-void f5() {
-    return null;
-}
-
 void main() {
-    int x = 1;
-    int x2 = "1" as int;
-    string y;
+    dict[int, int] mp = {};
 
-
-    if (1.0 < 2.0) {
-        x = 2;
-        string x;
-        x = "a";
+    int y = mp[1]?; # Obsłużone AppNullPointerException, y = null
+    if (y == null) {
+        print("Brak klucza");
     }
 
-    while (1 > 2) {
+    int x = ((null + 1)? / null)?;
+    if (x == null) {
+        print("Obsłużony wyjątek przy działaniach");
     }
 
-    string z = f2();
-
-    dict[int, int] d = {1: null, 2: 2};
-
-    d[1] = null;
-
-    int w = d[2];
-
-    f1(1, null);
-
-   foreach(int u : d) {
-        string y = u as string;
-        print(d[u] as string);
+    int z = (10 / 0)?;
+    if (z == null) {
+        print("Obsłużony wyjątek dzielenia przez zero");
     }
 }

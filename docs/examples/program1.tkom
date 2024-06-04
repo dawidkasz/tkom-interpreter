@@ -1,16 +1,13 @@
-int abc = ((1 + 2 * 3.0 as int ) + null)?;
+int x = 3 * 3 + 2 - 1; # 10
 
-int sq(int a, int b) {
-    return a * a + b * b;
-}
 
 void main() {
-    int x = 1;
-    int y = 2;
+    int y = 8 / 5; # 1
+    int z;
+    z = x + y; # 11
+    float a = z as float + 2.0; # 13.0
 
-    while (x + y <= abc) {
-        print(sq(x, y) as string);
-        x = x + 2;
-        y = y * y;
-    }
+    string b = "Ala" + " " + "ma" + " " + "kota";
+
+    print(a as string + " | " + b); # 13.0 | Ala ma kota
 }
