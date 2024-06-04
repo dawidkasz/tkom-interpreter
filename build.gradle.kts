@@ -17,11 +17,18 @@ val intTestImplementation: Configuration by configurations.getting {
     extendsFrom(configurations.implementation.get())
 }
 
+
+val testImplementation: Configuration by configurations.getting {
+    extendsFrom(configurations.implementation.get())
+}
+
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    implementation("commons-cli:commons-cli:1.8.0")
+
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.assertj:assertj-core:3.25.3")
@@ -33,4 +40,14 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.jar {
+    manifest {
+        attributes["Main-Class"] = "Interpreter"
+    }
+
+    from({
+        configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) }
+    })
 }

@@ -1,0 +1,16 @@
+void modifyDict(dict[string, int] mp, string key, int val) {
+    mp[key] = val;
+}
+
+void main() {
+    dict[string, int] mp = {"a": 1, "b": 2, "c": 3};
+
+    modifyDict(mp, "a", 3);
+    modifyDict(mp, "d", 4);
+
+    int x = mp["a"]; # 3
+
+    foreach (string key : mp) {
+        print(mp[key] as string); # 3 2 3 4
+    }
+}

@@ -73,11 +73,15 @@ public class DefaultParser implements Parser {
             declaration = this.parseFunctionDefinitionOrGlobalVariableDeclaration();
         }
 
+        if (!token.equals(Token.eof())) {
+            throw new SyntaxError("Function definition can not be parsed", token.position());
+        }
+
         return new Program(functions, globalVariables);
     }
 
     // functionDefinition = functionReturnType identifier parameterList statementBlock |
-    //                      type identifier ["=" expression] ";";;
+    //                      type identifier ["=" expression] ";";
     private Optional<Declaration> parseFunctionDefinitionOrGlobalVariableDeclaration() {
         if (!token.type().isFunctionReturnType()) {
             return Optional.empty();
@@ -640,6 +644,7 @@ public class DefaultParser implements Parser {
         consumeToken();
 
         if (token.type() == TokenType.RIGHT_CURLY_BRACKET) {
+            consumeToken();
             return Optional.of(DictLiteral.empty());
         }
 

@@ -1,0 +1,13 @@
+int x = 3 * 3 + 2 - 1; # 10
+
+
+void main() {
+    int y = 8 / 5; # 1
+    int z;
+    z = x + y; # 11
+    float a = z as float + 2.0; # 13.0
+
+    string b = "Ala" + " " + "ma" + " " + "kota";
+
+    print(a as string + " | " + b); # 13.0 | Ala ma kota
+}
