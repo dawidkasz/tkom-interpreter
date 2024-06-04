@@ -55,17 +55,16 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     private final SemanticChecker semanticChecker;
     private final Stack<FunctionCallContext> callStack = new Stack<>();
     private final Map<String, FunctionDefinition> functions = new HashMap<>();
-    private final Map<String, Runnable> builtinFunctions;
+    private final Map<String, Runnable> builtinFunctions = Map.of(
+            "print", this::executeBuiltinPrint,
+            "input", this::executeBuiltinInput
+    );
     private ResultStore<Object> lastResult;
     private Scope globalScope;
     private boolean shouldReturnFromCurrentFunctionCall = false;
 
     public DefaultProgramExecutor(SemanticChecker semanticChecker) {
         this.semanticChecker = semanticChecker;
-        builtinFunctions = Map.of(
-                "print", this::executeBuiltinPrint,
-                "input", this::executeBuiltinInput
-        );
     }
 
     @Override

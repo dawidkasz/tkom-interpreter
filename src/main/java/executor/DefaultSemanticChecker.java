@@ -3,6 +3,7 @@ package executor;
 import ast.AstVisitor;
 import ast.FunctionCall;
 import ast.FunctionDefinition;
+import ast.Parameter;
 import ast.Program;
 import ast.StatementBlock;
 import ast.expression.AndExpression;
@@ -47,6 +48,7 @@ import ast.type.Type;
 import ast.type.VoidType;
 import lexer.Position;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
@@ -57,6 +59,14 @@ import java.util.stream.Collectors;
 public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
     private FunctionCallContext currentFunctionContext;
     private final Map<String, FunctionDefinition> functions = new HashMap<>();
+    private final Map<String, List<Parameter>> builtinFunctionParameters = Map.of(
+            "print", List.of(new Parameter(new StringType(), "arg0")),
+            "input", Collections.emptyList()
+    );
+    private final Map<String, Type> builtinFunctionReturnTypes = Map.of(
+            "print", new VoidType(),
+            "input", new StringType()
+    );
     private ResultStore<Type> lastType;
     private Scope globalScope;
 
@@ -240,23 +250,23 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
 
     @Override
     public void visit(FunctionCall functionCall) {
-        if (functionCall.functionName().equals("print")) {
-            return;
-        }
-        if (functionCall.functionName().equals("input")) {
-            lastType.store(new StringType());
-            return;
-        }
+        String functionName = functionCall.functionName();
 
-        FunctionDefinition funDef = Optional.ofNullable(functions.get(functionCall.functionName()))
+        List<Parameter> functionParams = Optional.ofNullable(builtinFunctionParameters.get(functionName))
+                .or(() -> Optional.ofNullable(functions.get(functionCall.functionName()))
+                        .map(FunctionDefinition::parameters)
+                )
                 .orElseThrow(() -> new SemanticException(String.format(
                         "Function %s is not defined at line %s, column %s",
-                        functionCall.functionName(),
+                        functionName,
                         functionCall.position().lineNumber(),
                         functionCall.position().columnNumber()
                 )));
 
-        int numParams = funDef.parameters().size();
+        Type functionReturnType = Optional.ofNullable(builtinFunctionReturnTypes.get(functionName))
+                .orElseGet(() -> functions.get(functionCall.functionName()).returnType());
+
+        int numParams = functionParams.size();
         int numArgs = functionCall.arguments().size();
 
         if (numArgs != numParams) {
@@ -268,14 +278,16 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         for (int argIdx=0; argIdx<numArgs; ++argIdx) {
             functionCall.arguments().get(argIdx).accept(this);
             Type argType = lastType.consume();
-            Type paramType = funDef.parameters().get(argIdx).type();
+            Type paramType = functionParams.get(argIdx).type();
 
             if (!argType.equals(paramType) && !argType.equals(new NullAnyType())) {
                 throw new TypesMismatchException(argType, paramType, functionCall.position());
             }
         }
 
-        lastType.store(funDef.returnType());
+        if (!functionReturnType.equals(new VoidType())) {
+            lastType.store(functionReturnType);
+        }
     }
 
     @Override
@@ -357,7 +369,9 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
 
     @Override
     public void visit(AndExpression andExpression) {
-        visitBinaryExpression(andExpression.left(), andExpression.right());
+        andExpression.left().accept(this);
+        andExpression.right().accept(this);
+        lastType.store(new IntType());
     }
 
     @Override
@@ -407,7 +421,9 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
 
     @Override
     public void visit(OrExpression orExpression) {
-        visitBinaryExpression(orExpression.left(), orExpression.right());
+        orExpression.left().accept(this);
+        orExpression.right().accept(this);
+        lastType.store(new IntType());
     }
 
     @Override

@@ -3,7 +3,6 @@ package executor;
 import ast.Program;
 import lexer.DefaultLexer;
 import lexer.characterprovider.StringCharacterProvider;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -452,6 +451,26 @@ public class SemanticCheckerTest {
         assertThatExceptionOfType(DefaultSemanticChecker.SemanticException.class)
                 .isThrownBy(() -> runSemanticCheck(program))
                 .withMessage("Collections can not be casted");
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {
+            "print()",
+            "print(1)",
+            "print(\"a\", \"b\")",
+            "string x = input(1)",
+    }, delimiter = ';')
+    void should_throw_an_error_when_builtin_function_has_invalid_arguments(String funCall) {
+        // given
+        String program = String.format("""
+                void main() {
+                    %s;
+                }
+                """, funCall);
+
+        // then
+        assertThatExceptionOfType(DefaultSemanticChecker.SemanticException.class)
+                .isThrownBy(() -> runSemanticCheck(program));
     }
 
     private void runSemanticCheck(String input) {
