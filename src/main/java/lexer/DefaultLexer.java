@@ -12,6 +12,7 @@ import static lexer.TokenTypeMapper.SINGLE_SIGN_OPERATORS;
 public class DefaultLexer implements Lexer {
     private static final int DEFAULT_IDENTIFIER_LENGTH_LIMIT = 128;
     private static final int DEFAULT_STRING_LITERAL_LENGTH_LIMIT = 1024;
+    private static final char BEGIN_COMMENT_CHARACTER = '#';
     private static final PositionedCharacter EOF = new PositionedCharacter('\uFFFF', null);
 
     private final CharacterProvider characterProvider;
@@ -33,7 +34,7 @@ public class DefaultLexer implements Lexer {
 
     @Override
     public Token nextToken() {
-        skipWhiteCharacters();
+        skipWhiteCharactersAndComments();
 
         if (currentCharacter == EOF) {
             return Token.eof();
@@ -46,9 +47,18 @@ public class DefaultLexer implements Lexer {
                 .orElseThrow(() -> new LexerException("Unrecognized token", currentCharacter.position()));
     }
 
-    private void skipWhiteCharacters() {
-        while (Character.isWhitespace(currentCharacter.character())) {
-            readNextCharacter();
+    private void skipWhiteCharactersAndComments() {
+        while (
+                Character.isWhitespace(currentCharacter.character()) ||
+                currentCharacter.character() == BEGIN_COMMENT_CHARACTER
+        ) {
+            if (currentCharacter.character() == BEGIN_COMMENT_CHARACTER) {
+                while(currentCharacter.character() != '\n') {
+                    readNextCharacter();
+                }
+            } else {
+                readNextCharacter();
+            }
         }
     }
 

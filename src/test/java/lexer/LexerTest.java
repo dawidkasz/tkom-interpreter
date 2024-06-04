@@ -530,6 +530,44 @@ public class LexerTest {
     }
 
     @Test
+    void should_ignore_comments() {
+        // given
+        String text = """
+            void add(int a, int b) { # some comment 
+            # return abc
+            # return def
+                return a + b;#comment
+                # abc
+            }#another comment
+            #d
+            """;
+
+        // when
+        List<Token> tokens = tokenize(text);
+
+        // then
+        assertThat(tokens).extracting(Token::type).containsExactly(
+                TokenType.VOID_KEYWORD,
+                TokenType.IDENTIFIER,
+                TokenType.LEFT_ROUND_BRACKET,
+                TokenType.INT_KEYWORD,
+                TokenType.IDENTIFIER,
+                TokenType.COMMA,
+                TokenType.INT_KEYWORD,
+                TokenType.IDENTIFIER,
+                TokenType.RIGHT_ROUND_BRACKET,
+                TokenType.LEFT_CURLY_BRACKET,
+                TokenType.RETURN_KEYWORD,
+                TokenType.IDENTIFIER,
+                TokenType.PLUS_OPERATOR,
+                TokenType.IDENTIFIER,
+                TokenType.SEMICOLON,
+                TokenType.RIGHT_CURLY_BRACKET
+        );
+    }
+
+
+    @Test
     void should_return_eof_as_last_token() {
         // given
         Lexer lexer = new DefaultLexer(new StringCharacterProvider("\n x \n 123  \n "));
