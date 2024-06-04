@@ -80,6 +80,9 @@ public class ProgramExecutorTest {
             "\"x\", x",
             "(\"1\" as int + 1.0 as int), 2",
             "(1 as float + \"2.0\" as float), 3.0",
+            "(null as string), null",
+            "(\"1\" as int), 1",
+            "(\"5.5\" as float), 5.5",
     })
     void should_cast_simple_types(String input, String expected) {
         // given
@@ -800,6 +803,47 @@ public class ProgramExecutorTest {
 
         // then
         assertThat(capturedOutput).isEqualTo("0\n0\n0\n1\nx");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "int x = \"abc\" as int",
+            "int x = \"5.0\" as int",
+            "float x = \"abc\" as float",
+    })
+    void should_throw_cast_error_when_cast_is_impossible(String expression) {
+        // given
+        String program = String.format("""
+                void main() {
+                    %s;
+                }
+                """, expression);
+
+        // then
+        assertThatExceptionOfType(DefaultProgramExecutor.AppCastError.class)
+                .isThrownBy(() -> executeProgramAndCaptureOutput(program));
+    }
+
+    @Test
+    void should_catch_cast_error_when_nullable_operator_is_used() {
+        // given
+        String program = """
+                void main() {
+                    int x = ("abc" as int)?;
+                
+                    if (x != null) {
+                        print("a");
+                    } else {
+                        print("b");
+                    }
+                }
+                """;
+
+        // when
+        String capturedOutput = executeProgramAndCaptureOutput(program);
+
+        // then
+        assertThat(capturedOutput).isEqualTo("b");
     }
 
     private String executeProgramAndCaptureOutput(String input) {

@@ -3,6 +3,7 @@ package executor;
 import ast.Program;
 import lexer.DefaultLexer;
 import lexer.characterprovider.StringCharacterProvider;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -276,6 +277,23 @@ public class SemanticCheckerTest {
                 .withMessage("Variable abc is not defined");
     }
 
+
+    @Test
+    void should_throw_an_error_if_condition_in_while_statement_is_invalid() {
+        // given
+        String program = """
+                void main() {
+                    while ({1: 2}) {
+                    }
+                }
+                """;
+
+        // then
+        assertThatExceptionOfType(DefaultSemanticChecker.SemanticException.class)
+                .isThrownBy(() -> runSemanticCheck(program))
+                .withMessage("Invalid condition in while statement at line 2, column 5");
+    }
+
     @Test
     void should_throw_an_error_if_variable_is_not_defined_when_used_in_operator() {
         // given
@@ -414,6 +432,26 @@ public class SemanticCheckerTest {
         assertThatExceptionOfType(DefaultSemanticChecker.SemanticException.class)
                 .isThrownBy(() -> runSemanticCheck(program))
                 .withMessage("Unary minus operator is not applicable to type string");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "int x = {1: 5} as int",
+            "float x = {1: 5} as float",
+            "string x = {1: 5} as string",
+    })
+    void should_throw_cast_error_when_casting_a_collection_type(String expression) {
+        // given
+        String program = String.format("""
+                void main() {
+                    %s;
+                }
+                """, expression);
+
+        // then
+        assertThatExceptionOfType(DefaultSemanticChecker.SemanticException.class)
+                .isThrownBy(() -> runSemanticCheck(program))
+                .withMessage("Collections can not be casted");
     }
 
     private void runSemanticCheck(String input) {

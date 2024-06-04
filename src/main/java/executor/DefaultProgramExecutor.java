@@ -40,11 +40,13 @@ import ast.statement.WhileStatement;
 import ast.type.FloatType;
 import ast.type.IntType;
 import ast.type.StringType;
+import ast.type.Type;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Scanner;
 import java.util.Stack;
 import java.util.List;
@@ -89,7 +91,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
             globalScope.declareVar(new Variable(
                     varName,
                     varDec.type(),
-                    lastResult.fetchAndReset()
+                    lastResult.consume()
             ));
         });
 
@@ -106,7 +108,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         FunctionCallContext context = callStack.peek();
 
         variableAssignment.expression().accept(this);
-        context.assignVar(variableAssignment.varName(),  lastResult.fetchAndReset());
+        context.assignVar(variableAssignment.varName(),  lastResult.consume());
     }
 
     @Override
@@ -115,10 +117,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         Variable dictVar = callStack.peek().findVar(dictAssignment.variableName()).orElseThrow();
 
         dictAssignment.key().accept(this);
-        Object key = lastResult.fetchAndReset();
+        Object key = lastResult.consume();
 
         dictAssignment.value().accept(this);
-        Object value = lastResult.fetchAndReset();
+        Object value = lastResult.consume();
 
         if (dictVar.getValue() instanceof Map) {
             Map<Object, Object> previousVal = (LinkedHashMap<Object, Object>) dictVar.getValue();
@@ -133,19 +135,19 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(WhileStatement whileStatement) {
         whileStatement.condition().accept(this);
-        boolean shouldLoop = isTruthy(lastResult.fetchAndReset());
+        boolean shouldLoop = isTruthy(lastResult.consume());
 
         while (shouldLoop) {
             whileStatement.statementBlock().accept(this);
             whileStatement.condition().accept(this);
-            shouldLoop = isTruthy(lastResult.fetchAndReset());
+            shouldLoop = isTruthy(lastResult.consume());
         }
     }
 
     @Override
     public void visit(ForeachStatement foreachStatement) {
         foreachStatement.iterable().accept(this);
-        var iterable = lastResult.fetchAndReset();
+        var iterable = lastResult.consume();
 
         if (iterable instanceof Map<?,?> iterableDict) {
             iterableDict.keySet().forEach(key -> {
@@ -167,7 +169,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(IfStatement ifStatement) {
         ifStatement.condition().accept(this);
-        var conditionValue = lastResult.fetchAndReset();
+        var conditionValue = lastResult.consume();
 
         if (isTruthy(conditionValue)) {
             ifStatement.ifBlock().accept(this);
@@ -184,64 +186,66 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
     @Override
     public void visit(FunctionCall functionCall) {
-        FunctionDefinition functionDef = functions.get(functionCall.functionName());
-        if (functionDef != null) {
-            List<Variable> arguments = new ArrayList<>();
+        Optional.ofNullable(functions.get(functionCall.functionName()))
+                .ifPresentOrElse(
+                        functionDef -> visitUserFunctionCall(functionCall, functionDef),
+                        () -> Optional.ofNullable(builtinFunctions.get(functionCall.functionName()))
+                                .ifPresent(builtinFunctionDef ->
+                                    visitBuiltinFunctionCall(functionCall, builtinFunctionDef)
+                                )
+                );
 
-            for(int idx = 0; idx < functionCall.arguments().size(); idx++) {
-                functionCall.arguments().get(idx).accept(this);
+        callStack.pop();
+    }
 
-                arguments.add(new Variable(
-                        functionDef.parameters().get(idx).name(),
-                        functionDef.parameters().get(idx).type(),
-                        lastResult.fetchAndReset()
-                ));
-            }
+    private void visitUserFunctionCall(FunctionCall functionCall, FunctionDefinition functionDef) {
+        List<Variable> arguments = new ArrayList<>();
 
-            callStack.push(new FunctionCallContext(
-                    functionCall.functionName(),
-                    new Scope(arguments),
-                    globalScope
+        for(int idx = 0; idx < functionCall.arguments().size(); idx++) {
+            functionCall.arguments().get(idx).accept(this);
+
+            arguments.add(new Variable(
+                    functionDef.parameters().get(idx).name(),
+                    functionDef.parameters().get(idx).type(),
+                    lastResult.consume()
             ));
-
-            functionDef.statementBlock().accept(this);
-
-            callStack.pop();
-            shouldReturnFromCurrentFunctionCall = false;
-
-            return;
         }
 
-        Runnable builtinFunctionDef = builtinFunctions.get(functionCall.functionName());
-        if (builtinFunctionDef != null) {
-            List<Variable> arguments = new ArrayList<>();
+        callStack.push(new FunctionCallContext(
+                functionCall.functionName(),
+                new Scope(arguments),
+                globalScope
+        ));
 
-            for(int idx = 0; idx < functionCall.arguments().size(); idx++) {
-                functionCall.arguments().get(idx).accept(this);
+        functionDef.statementBlock().accept(this);
+        shouldReturnFromCurrentFunctionCall = false;
+    }
 
-                arguments.add(new Variable("arg" + idx, new StringType(), lastResult.fetchAndReset()));
-            }
+    private void visitBuiltinFunctionCall(FunctionCall functionCall, Runnable builtinFunctionDef) {
+        List<Variable> arguments = new ArrayList<>();
 
-            callStack.push(new FunctionCallContext(
-                    functionCall.functionName(),
-                    new Scope(arguments),
-                    globalScope
-            ));
-            builtinFunctionDef.run();
-            callStack.pop();
-            return;
+        for(int idx = 0; idx < functionCall.arguments().size(); idx++) {
+            functionCall.arguments().get(idx).accept(this);
+
+            arguments.add(new Variable("arg" + idx, new StringType(), lastResult.consume()));
         }
 
-        throw new RuntimeException("Unrecognized function name " + functionCall.functionName());
+        callStack.push(new FunctionCallContext(
+                functionCall.functionName(),
+                new Scope(arguments),
+                globalScope
+        ));
+
+        builtinFunctionDef.run();
     }
 
     @Override
     public void visit(DivideExpression divideExpression) {
         divideExpression.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         divideExpression.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         assertNotNull(left);
         assertNotNull(right);
@@ -262,49 +266,55 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(CastedExpression castedExpression) {
         castedExpression.expression().accept(this);
-        var value = lastResult.fetchAndReset();
+        var value = lastResult.consume();
 
         Class<?> clazz = value.getClass();
         var outType = castedExpression.asType();
 
-        if (clazz.equals(Integer.class)) {
-            if (outType.equals(new IntType())) {
-                lastResult.store(value);
-            } else if (outType.equals(new FloatType())) {
-                lastResult.store(Float.valueOf((Integer) value));
-            } else if (outType.equals(new StringType())) {
-                lastResult.store(String.valueOf(value));
+        try {
+            if (clazz.equals(Integer.class)) {
+                if (outType.equals(new IntType())) {
+                    lastResult.store(value);
+                } else if (outType.equals(new FloatType())) {
+                    lastResult.store(Float.valueOf((Integer) value));
+                } else if (outType.equals(new StringType())) {
+                    lastResult.store(String.valueOf(value));
+                }
+            } else if (clazz.equals(Float.class)) {
+                if (outType.equals(new IntType())) {
+                    lastResult.store(((Float) value).intValue());
+                } else if (outType.equals(new FloatType())) {
+                    lastResult.store(value);
+                } else if (outType.equals(new StringType())) {
+                    lastResult.store(String.valueOf(value));
+                }
+            } else if (clazz.equals(String.class)) {
+                if (outType.equals(new IntType())) {
+                    lastResult.store(Integer.valueOf((String) value));
+                } else if (outType.equals(new FloatType())) {
+                    lastResult.store(Float.valueOf((String) value));
+                } else if (outType.equals(new StringType())) {
+                    lastResult.store(value);
+                }
+            } else if (clazz.equals(Null.class)) {
+                if (outType.equals(new StringType())) {
+                    lastResult.store(value.toString());
+                }
+            } else {
+                throw new AppCastError(outType);
             }
-        } else if (clazz.equals(Float.class)) {
-            if (outType.equals(new IntType())) {
-                lastResult.store(((Float) value).intValue());
-            } else if (outType.equals(new FloatType())) {
-                lastResult.store(value);
-            } else if (outType.equals(new StringType())) {
-                lastResult.store(String.valueOf(value));
-            }
-         } else if (clazz.equals(String.class)) {
-            if (outType.equals(new IntType())) {
-                lastResult.store(Integer.valueOf((String) value));
-            } else if (outType.equals(new FloatType())) {
-                lastResult.store(Float.valueOf((String) value));
-            } else if (outType.equals(new StringType())) {
-                lastResult.store(value);
-            }
-        } else if (clazz.equals(Null.class)) {
-            if (outType.equals(new StringType())) {
-                lastResult.store(value.toString());
-            }
+        } catch (NumberFormatException e) {
+            throw new AppCastError(outType);
         }
     }
 
     @Override
     public void visit(DictValue dictValue) {
         dictValue.dict().accept(this);
-        Object dict = lastResult.fetchAndReset();
+        Object dict = lastResult.consume();
 
         dictValue.key().accept(this);
-        Object key = lastResult.fetchAndReset();
+        Object key = lastResult.consume();
 
         if (dict instanceof LinkedHashMap<?,?>) {
             var value = ((LinkedHashMap<?, ?>) dict).get(key);
@@ -323,10 +333,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
         dictLiteral.content().forEach((k, v) -> {
             k.accept(this);
-            Object key = lastResult.fetchAndReset();
+            Object key = lastResult.consume();
 
             v.accept(this);
-            Object value = lastResult.fetchAndReset();
+            Object value = lastResult.consume();
 
             dictContent.put(key, value);
         });
@@ -352,10 +362,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(MinusExpression minusExpression) {
         minusExpression.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         minusExpression.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         assertNotNull(left);
         assertNotNull(right);
@@ -372,10 +382,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(ModuloExpression moduloExpression) {
         moduloExpression.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         moduloExpression.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         assertNotNull(left);
         assertNotNull(right);
@@ -392,10 +402,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(MultiplyExpression multiplyExpression) {
         multiplyExpression.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         multiplyExpression.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         assertNotNull(left);
         assertNotNull(right);
@@ -427,10 +437,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(PlusExpression plusExpression) {
         plusExpression.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         plusExpression.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         assertNotNull(left);
         assertNotNull(right);
@@ -456,8 +466,8 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
 
         try {
             nullableExpression.expression().accept(this);
-            value = lastResult.fetchAndReset();
-        } catch (AppNullPointerException e) {
+            value = lastResult.consume();
+        } catch (AppRuntimeException e) {
             value = Null.getInstance();
         }
 
@@ -467,10 +477,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(LessThan lessThan) {
         lessThan.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         lessThan.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         assertNotNull(left);
         assertNotNull(right);
@@ -487,10 +497,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(GreaterThan greaterThan) {
         greaterThan.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         greaterThan.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         assertNotNull(left);
         assertNotNull(right);
@@ -507,10 +517,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(LessThanOrEqual lessThanOrEqual) {
         lessThanOrEqual.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         lessThanOrEqual.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         assertNotNull(left);
         assertNotNull(right);
@@ -527,10 +537,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(GreaterThanOrEqual greaterThanOrEqual) {
         greaterThanOrEqual.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         greaterThanOrEqual.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         assertNotNull(left);
         assertNotNull(right);
@@ -547,7 +557,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(AndExpression andExpression) {
         andExpression.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         if (!isTruthy(left)) {
             lastResult.store(0);
@@ -555,7 +565,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         }
 
         andExpression.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         lastResult.store(booleanToInteger(isTruthy(right)));
     }
@@ -563,7 +573,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(OrExpression orExpression) {
         orExpression.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         if (isTruthy(left)) {
             lastResult.store(1);
@@ -571,7 +581,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         }
 
         orExpression.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         lastResult.store(booleanToInteger(isTruthy(right)));
     }
@@ -579,10 +589,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(Equal equal) {
         equal.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         equal.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         lastResult.store(booleanToInteger(left.equals(right)));
     }
@@ -590,10 +600,10 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(NotEqual notEqual) {
         notEqual.left().accept(this);
-        var left = lastResult.fetchAndReset();
+        var left = lastResult.consume();
 
         notEqual.right().accept(this);
-        var right = lastResult.fetchAndReset();
+        var right = lastResult.consume();
 
         lastResult.store(booleanToInteger(!left.equals(right)));
     }
@@ -601,7 +611,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(NegationExpression negationExpression) {
         negationExpression.expression().accept(this);
-        var value = lastResult.fetchAndReset();
+        var value = lastResult.consume();
 
         lastResult.store(booleanToInteger(!isTruthy(value)));
     }
@@ -609,7 +619,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     @Override
     public void visit(UnaryMinusExpression unaryMinusExpression) {
         unaryMinusExpression.expression().accept(this);
-        var value = lastResult.fetchAndReset();
+        var value = lastResult.consume();
 
         assertNotNull(value);
 
@@ -627,7 +637,7 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
         FunctionCallContext context = callStack.peek();
 
         variableDeclaration.value().accept(this);
-        Object value = lastResult.fetchAndReset();
+        Object value = lastResult.consume();
 
         context.declareVar(new Variable(
                 variableDeclaration.name(),
@@ -709,6 +719,12 @@ public class DefaultProgramExecutor implements AstVisitor, ProgramExecutor {
     public static class AppZeroDivisionError extends AppRuntimeException {
         AppZeroDivisionError() {
             super("Can't divide by zero");
+        }
+    }
+
+    public static class AppCastError extends AppRuntimeException {
+        AppCastError(Type toType) {
+            super(String.format("Value can not be casted to type %s", toType));
         }
     }
 }

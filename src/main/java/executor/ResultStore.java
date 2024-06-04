@@ -7,11 +7,14 @@ final class ResultStore<T> {
         lastResult = value;
     }
 
-    public T fetchAndReset() {
+    public T consume() {
         if (lastResult == null) {
             throw new IllegalStateException("Last result is empty");
         }
 
-        return lastResult;
+        T value = lastResult;
+        lastResult = null;
+
+        return value;
     }
 }

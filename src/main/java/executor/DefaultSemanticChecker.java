@@ -37,6 +37,7 @@ import ast.statement.ReturnStatement;
 import ast.statement.VariableAssignment;
 import ast.statement.VariableDeclaration;
 import ast.statement.WhileStatement;
+import ast.type.CollectionType;
 import ast.type.DictType;
 import ast.type.FloatType;
 import ast.type.IntType;
@@ -56,7 +57,7 @@ import java.util.stream.Collectors;
 public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
     private FunctionCallContext currentFunctionContext;
     private final Map<String, FunctionDefinition> functions = new HashMap<>();
-    private final ResultStore<Type> lastType = new ResultStore<>();
+    private ResultStore<Type> lastType;
     private Scope globalScope;
 
     @Override
@@ -69,6 +70,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         functions.clear();
         globalScope = new Scope();
         currentFunctionContext = null;
+        lastType = new ResultStore<>();
     }
 
     @Override
@@ -142,7 +144,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
 
         variableAssignment.expression().accept(this);
 
-        assertTypesMatch(varType, lastType.fetchAndReset(), variableAssignment.position());
+        assertTypesMatch(varType, lastType.consume(), variableAssignment.position());
     }
 
     @Override
@@ -159,14 +161,14 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         SimpleType dictValueType = ((DictType) dict.getType()).valueType();
 
         dictAssignment.key().accept(this);
-        Type keyType = lastType.fetchAndReset();
+        Type keyType = lastType.consume();
 
         if (!keyType.equals(new NullAnyType()) && !keyType.equals(dictKeyType)) {
             throw new TypesMismatchException(keyType, dictKeyType, dictAssignment.position());
         }
 
         dictAssignment.value().accept(this);
-        Type valueType = lastType.fetchAndReset();
+        Type valueType = lastType.consume();
 
         if (!valueType.equals(new NullAnyType()) && !valueType.equals(dictValueType)) {
             throw new TypesMismatchException(valueType, dictValueType, dictAssignment.position());
@@ -176,13 +178,15 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
     @Override
     public void visit(WhileStatement whileStatement) {
         whileStatement.condition().accept(this);
+        assertIsValidConditionType(lastType.consume(), whileStatement.position());
+
         whileStatement.statementBlock().accept(this);
     }
 
     @Override
     public void visit(ForeachStatement foreachStatement) {
         foreachStatement.iterable().accept(this);
-        Type iterableType = lastType.fetchAndReset();
+        Type iterableType = lastType.consume();
 
         if (!(iterableType instanceof DictType iterableTypeDict)) {
             throw new SemanticException(String.format("Value is not iterable at line %s, column %s",
@@ -203,6 +207,8 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
     @Override
     public void visit(IfStatement ifStatement) {
         ifStatement.condition().accept(this);
+        assertIsValidConditionType(lastType.consume(), ifStatement.position());
+
         ifStatement.ifBlock().accept(this);
 
         if (ifStatement.elseBlock() != null) {
@@ -213,7 +219,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
     @Override
     public void visit(ReturnStatement returnStatement) {
         returnStatement.expression().accept(this);
-        Type returnType = lastType.fetchAndReset();
+        Type returnType = lastType.consume();
 
         Type functionReturnType = functions.get(currentFunctionContext.getFunctionName()).returnType();
 
@@ -261,7 +267,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
 
         for (int argIdx=0; argIdx<numArgs; ++argIdx) {
             functionCall.arguments().get(argIdx).accept(this);
-            Type argType = lastType.fetchAndReset();
+            Type argType = lastType.consume();
             Type paramType = funDef.parameters().get(argIdx).type();
 
             if (!argType.equals(paramType) && !argType.equals(new NullAnyType())) {
@@ -280,13 +286,19 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
     @Override
     public void visit(CastedExpression castedExpression) {
         castedExpression.expression().accept(this);
+        Type typeToCast = lastType.consume();
+
+        if (typeToCast instanceof CollectionType) {
+            throw new SemanticException("Collections can not be casted");
+        }
+
         lastType.store(castedExpression.asType());
     }
 
     @Override
     public void visit(DictValue dictValue) {
         dictValue.dict().accept(this);
-        Type dict = lastType.fetchAndReset();
+        Type dict = lastType.consume();
 
         if (!(dict instanceof DictType)) {
             throw new SemanticException(String.format("%s is not a valid dict", dictValue));
@@ -296,7 +308,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         Type dictValueType = ((DictType) dict).valueType();
 
         dictValue.key().accept(this);
-        Type keyType = lastType.fetchAndReset();
+        Type keyType = lastType.consume();
 
         if (!keyType.equals(new NullAnyType()) && !dictKeyType.equals(keyType)) {
             throw new SemanticException(String.format("Expected type %s, but provided %s", dictKeyType, keyType));
@@ -310,7 +322,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         Set<Type> keyTypes = dictLiteral.content().keySet().stream()
                 .map(k -> {
                     k.accept(this);
-                    return lastType.fetchAndReset();
+                    return lastType.consume();
                 })
                 .filter(k -> !k.equals(new NullAnyType()))
                 .collect(Collectors.toSet());
@@ -318,7 +330,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         Set<Type> valueTypes = dictLiteral.content().values().stream()
                 .map(v -> {
                     v.accept(this);
-                    return lastType.fetchAndReset();
+                    return lastType.consume();
                 })
                 .filter(v -> !v.equals(new NullAnyType()))
                 .collect(Collectors.toSet());
@@ -365,24 +377,12 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
 
     @Override
     public void visit(LessThan lessThan) {
-        lessThan.left().accept(this);
-        Type left = lastType.fetchAndReset();
-
-        lessThan.right().accept(this);
-        Type right = lastType.fetchAndReset();
-
-        assertTypesMatch(left, right);
+        visitBinaryExpression(lessThan.left(), lessThan.right());
     }
 
     @Override
     public void visit(MinusExpression minusExpression) {
-        minusExpression.left().accept(this);
-        Type left = lastType.fetchAndReset();
-
-        minusExpression.right().accept(this);
-        Type right = lastType.fetchAndReset();
-
-        assertTypesMatch(left, right);
+        visitBinaryExpression(minusExpression.left(), minusExpression.right());
     }
 
     @Override
@@ -460,7 +460,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
     @Override
     public void visit(UnaryMinusExpression unaryMinusExpression) {
         unaryMinusExpression.expression().accept(this);
-        Type type = lastType.fetchAndReset();
+        Type type = lastType.consume();
 
         if (type.equals(new VoidType()) || type.equals(new StringType())) {
             throw new SemanticException("Unary minus operator is not applicable to type " + type);
@@ -471,10 +471,10 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
 
     private void visitBinaryExpression(Expression leftExpression, Expression rightExpression) {
         leftExpression.accept(this);
-        Type left = lastType.fetchAndReset();
+        Type left = lastType.consume();
 
         rightExpression.accept(this);
-        Type right = lastType.fetchAndReset();
+        Type right = lastType.consume();
 
         assertTypesMatch(left, right);
 
@@ -484,7 +484,7 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
     @Override
     public void visit(VariableDeclaration variableDeclaration) {
         variableDeclaration.value().accept(this);
-        Type valueType = lastType.fetchAndReset();
+        Type valueType = lastType.consume();
 
         if (
                 variableDeclaration.type() instanceof DictType varType &&
@@ -536,6 +536,12 @@ public class DefaultSemanticChecker implements AstVisitor, SemanticChecker {
         return t1.equals(t2) || t1.equals(new NullAnyType()) || t2.equals(new NullAnyType());
     }
 
+    private void assertIsValidConditionType(Type type, Position position) {
+        if (type instanceof CollectionType) {
+            throw new SemanticException(String.format("Invalid condition in while statement at line %s, column %s",
+                    position.lineNumber(), position.columnNumber()));
+        }
+    }
 
     public static class SemanticException extends RuntimeException {
         public SemanticException(String message) {
