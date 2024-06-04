@@ -284,3 +284,8 @@ dictLiteral = "{" [dictLiteralKeyValuePair {"," dictLiteralKeyValuePair }] "}";
 
 dictLiteralKeyValuePair = expression ":" expression;
 ```
+
+## Opis realizacji i testowanie
+- Implementacja interpretera w języku Java
+- Środowisko do budowania gradle
+- 262 testy jednostkowe bądź integracyjne
