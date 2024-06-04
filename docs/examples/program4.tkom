@@ -1,0 +1,26 @@
+int readNumber() {
+    print("Provide number: ");
+    int n = (input() as int)?;
+    if (n == null) {
+        print("Invalid number format");
+        return null;
+    }
+
+    return n;
+}
+
+void main() {
+    int a = readNumber();
+    if (a == null) {
+        return null;
+    }
+
+    int b = readNumber();
+    if (b == null) {
+        return null;
+    }
+
+    int result = a + b;
+
+    print(a as string + " + " + b as string + " = " + result as string);
+}

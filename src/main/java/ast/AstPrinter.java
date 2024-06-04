@@ -94,7 +94,7 @@ public class AstPrinter implements AstVisitor {
     public void visit(VariableAssignment assignment) {
         print("Assign(\n");
         withIndentation(() -> {
-            print(String.format("varName=%s\n", assignment.variableName()));
+            print(String.format("varName=%s\n", assignment.varName()));
             print("value=");
             withoutIndentationForNextLine(() -> assignment.expression().accept(this));
         });

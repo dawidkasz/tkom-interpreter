@@ -82,7 +82,12 @@ public class LexerTest {
     }
 
     private List<Token> tokenize(String filePath) {
-        Lexer lexer = new DefaultLexer(new FileCharacterProvider(filePath));
+        Lexer lexer;
+        try {
+            lexer = new DefaultLexer(new FileCharacterProvider(filePath));
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
 
         return Stream.generate(lexer::nextToken)
                 .takeWhile(t -> !t.type().equals(TokenType.EOF))

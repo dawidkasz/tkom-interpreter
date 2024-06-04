@@ -559,6 +559,26 @@ public class ParserTest {
     }
 
     @Test
+    void should_parse_empty_dict_literal() {
+        /*
+        given:
+        dict[int, int] d = {};
+        */
+        var tokens = List.of(getToken(DICT_KEYWORD), getToken(LEFT_SQUARE_BRACKET), getToken(INT_KEYWORD),
+                getToken(COMMA), getToken(INT_KEYWORD), getToken(RIGHT_SQUARE_BRACKET), getToken(IDENTIFIER, "d"),
+                getToken(ASSIGNMENT), getToken(LEFT_CURLY_BRACKET), getToken(RIGHT_CURLY_BRACKET),
+                getToken(SEMICOLON), Token.eof());
+
+        // when
+        var program = parseProgram(tokens);
+
+        // then
+        assertThat(program.globalVariables().get("d"))
+                .matches(d -> d.type().equals(new DictType(new IntType(), new IntType())))
+                .matches(d -> d.value().equals(DictLiteral.empty()));
+    }
+
+    @Test
     void should_throw_syntax_error_for_missing_left_round_bracket_in_foreach_statement() {
   /*
         given:

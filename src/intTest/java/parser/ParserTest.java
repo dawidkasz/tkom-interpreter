@@ -142,7 +142,18 @@ public class ParserTest {
                 .withMessage("Missing right round bracket at position(line=2, column=13)");
     }
 
-        private Program parseProgram(String program) {
+    @Test
+    void should_throw_syntax_error_if_function_definition_cant_be_parsed() {
+        // given
+        String input = "dasdas";
+
+        //then
+        assertThatExceptionOfType(DefaultParser.SyntaxError.class)
+                .isThrownBy(() -> parseProgram(input))
+                .withMessage("Function definition can not be parsed at position(line=1, column=1)");
+    }
+
+    private Program parseProgram(String program) {
         return new DefaultParser(new DefaultLexer(new StringCharacterProvider(program))).parseProgram();
     }
 }
