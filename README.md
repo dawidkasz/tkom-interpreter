@@ -173,7 +173,7 @@ void main() {
 }
 ```
 
-## Grammar
+## EBNF Grammar
 
 ```ebnf
 program = {functionDefinition | variableDeclaration};
